@@ -85,7 +85,7 @@ function file_element_info() {
  * Implements hook_theme().
  */
 function file_theme() {
-  return array(
+  $themes = array(
     // file.module.
     'file_link' => array(
       'variables' => array('file' => NULL, 'icon_directory' => NULL),
@@ -110,7 +110,224 @@ function file_theme() {
     'file_upload_help' => array(
       'variables' => array('description' => NULL, 'upload_validators' => NULL),
     ),
+
+    // media player theme
+    'media_player' => array(
+      'render element' => 'element',
+    )
   );
+
+  // Register the player templates
+  $info = file_get_player_info();
+  foreach ($info['templates'] as $name => $info) {
+    $themes['media_player_' . $name] = array(
+      'template' => 'media_player_' . $name,
+      'variables' => array('params' => NULL),
+      'path' => $info['path']
+    );
+  }
+
+  // Return the themes.
+  return $themes;
+}
+
+/**
+ * Implements hook_library_info().
+ */
+function file_library_info() {
+  $path = drupal_get_path('module', 'file') . '/player';
+  return array(
+    'mediaplayer' => array(
+      'title' => 'Media Player',
+      'version' => '0.1',
+      'js' => array(
+        $path . '/bin/minplayer.player.compressed.js' => array('group' => JS_LIBRARY)
+      ),
+      'dependencies' => array(
+        array('system', 'ui.slider')
+      )
+    ),
+    'mediaplayer_debug' => array(
+      'title' => 'Media Player (Debug Mode)',
+      'version' => '0.1',
+      'js' => array(
+        $path . '/src/minplayer.compatibility.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.flags.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.plugin.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.display.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.player.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.file.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.playLoader.base.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.players.base.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.players.html5.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.players.flash.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.players.minplayer.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.players.youtube.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.controllers.base.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.templates.base.js' => array('group' => JS_LIBRARY)
+      ),
+      'dependencies' => array(
+        array('system', 'ui.slider')
+      )
+    )
+  );
+}
+
+/**
+ * Returns all of the media player information.
+ */
+function file_get_player_info() {
+
+  // Implement hook_media_player_info
+  $cache = cache_get('media_player_info');
+  if ($cache) {
+    return $cache->data;
+  }
+  else {
+    // Invoke all media_player_info and then set the cache.
+    $player_info = module_invoke_all('media_player_info');
+    cache_set('media_player_info', $player_info);
+    return $player_info;
+  }
+}
+
+/**
+ * Implements hook_media_player_info
+ */
+function file_media_player_info() {
+  $path = drupal_get_path('module', 'file') . '/player/templates';
+  return array(
+    'plugins' => array(),
+    'templates' => array(
+      'default' => array(
+        'path' => $path . '/default',
+        'js' => array(
+          $path . '/default/js/minplayer.playLoader.default.js' => array('group' => JS_DEFAULT),
+          $path . '/default/js/minplayer.controllers.default.js' => array('group' => JS_DEFAULT),
+          $path . '/default/js/minplayer.templates.default.js' => array('group' => JS_DEFAULT)
+        ),
+        'css' => array(
+          $path . '/default/css/media_player_default.css' => array('group' => CSS_DEFAULT)
+        )
+      )
+    )
+  );
+}
+
+/**
+ * Register a new media player in JavaScript.
+ */
+function file_register_player($playerId, $settings, $attributes) {
+  $attributes = drupal_json_encode($attributes);
+  $settings = drupal_json_encode($settings);
+  $swfplayer = url(drupal_get_path('module', 'file') . '/player/flash/minplayer.swf');
+  drupal_add_js("
+    jQuery(function() {
+      jQuery('#{$playerId}').minplayer({
+        id:'#{$playerId}',
+        attributes:{$attributes},
+        settings:{$settings},
+        swfplayer:'{$swfplayer}'
+      });
+    });
+  ", 'inline');
+}
+
+/**
+ * Theme a media player.
+ */
+function theme_media_player($variables) {
+  // Get the template.
+  $template = $variables['element']['#settings']['template'];
+
+  // Add some variables that the template needs.
+  $variables['player'] = theme('html_tag', $variables);
+  $variables['settings'] = $variables['element']['#settings'];
+
+  // Register the media player in JavaScript.
+  file_register_player($variables['settings']['id'], $variables['element']['#settings'], $variables['element']['#attributes']);
+
+  // Return the theme for our media player.
+  return theme('media_player_' . $template, $variables);
+}
+
+/**
+ * Returns the settings for this video or audio element.
+ */
+function file_player_get_attributes($item, $settings) {
+  $attributes = array();
+
+  $attributes['src'] = file_create_url($item['uri']);
+
+  $element_settings = array('preload', 'autoplay', 'loop');
+  foreach ($settings as $name => $value) {
+    if ($value && in_array($name, $element_settings)) {
+      $attributes[$name] = NULL;
+    }
+  }
+
+  $attributes['id'] = $settings['id'] . '-player';
+  $attributes['width'] = '100%';
+  $attributes['height'] = '100%';
+
+  return $attributes;
+}
+
+/**
+ * Adds the media player resources to the view.
+ */
+function file_player_add_resources($template, $debug) {
+  static $resources_added = FALSE, $template_added = array();
+
+  // Get the player information.
+  $info = file_media_player_info();
+
+  if (!$resources_added) {
+
+    // Add the media player library.
+    drupal_add_library('file', $debug ? 'mediaplayer_debug' : 'mediaplayer');
+
+    // Iterate through all the plugins...
+    foreach ($info['plugins'] as $plugin) {
+
+      // Include all of the css and js files.
+      if ($plugin['js']) {
+        foreach ($plugin['js'] as $file => $options) {
+          drupal_add_js($file, $options);
+        }
+      }
+      if ($plugin['css']) {
+        foreach ($plugin['css'] as $file => $options) {
+          drupal_add_css($file, $options);
+        }
+      }
+    }
+  }
+
+  // Get the templates...
+  $templates = $info['templates'];
+
+  // If this template exists, then...
+  if (!isset($template_added[$template]) && isset($templates[$template])) {
+
+    // Statically cache this so we won't add it again.
+    $template_added[$template] = TRUE;
+
+    // Store the template info.
+    $template = $templates[$template];
+
+    // Include all of the template files.
+    if ($template['js']) {
+      foreach ($template['js'] as $file => $options) {
+        drupal_add_js($file, $options);
+      }
+    }
+    if ($template['css']) {
+      foreach ($template['css'] as $file => $options) {
+        drupal_add_css($file, $options);
+      }
+    }
+  }
 }
 
 /**

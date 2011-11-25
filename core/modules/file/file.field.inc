@@ -391,7 +391,99 @@ function file_field_formatter_info() {
       'label' => t('URL to file'),
       'field types' => array('file'),
     ),
+    'file_player' => array(
+      'label' => t('Media Player'),
+      'description' => t('Play this file within a Media Player.'),
+      'field types' => array('file'),
+      'settings' => array(
+        'template' => 'default',
+        'preload' => TRUE,
+        'autoplay' => FALSE,
+        'loop' => FALSE,
+        'width' => '100%',
+        'height' => '350px',
+        'debug' => FALSE
+      )
+    )
   );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form
+ */
+function file_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $element = array();
+  if ($display['type'] == 'file_player') {
+
+    // Get the player information and templates.
+    $info = file_media_player_info();
+    $templates = array_keys($info['templates']);
+    $templates = array_combine($templates, $templates);
+
+    $element['template'] = array(
+      '#title' => t('Template'),
+      '#type' => 'select',
+      '#options' => $templates,
+      '#default_value' => $settings['template']
+    );
+
+    $element['preload'] = array(
+      '#title' => t('Preload'),
+      '#type' => 'checkbox',
+      '#default_value' => $settings['preload']
+    );
+
+    $element['autoplay'] = array(
+      '#title' => t('Autoplay'),
+      '#type' => 'checkbox',
+      '#default_value' => $settings['autoplay']
+    );
+
+    $element['loop'] = array(
+      '#title' => t('Loop'),
+      '#type' => 'checkbox',
+      '#default_value' => $settings['loop']
+    );
+
+    $element['width'] = array(
+      '#title' => t('Width'),
+      '#type' => 'textfield',
+      '#default_value' => $settings['width']
+    );
+
+    $element['height'] = array(
+      '#title' => t('Height'),
+      '#type' => 'textfield',
+      '#default_value' => $settings['height']
+    );
+
+    $element['debug'] = array(
+      '#title' => t('Debug Mode'),
+      '#type' => 'checkbox',
+      '#default_value' => $settings['debug']
+    );
+  }
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary
+ */
+function file_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $summary = '';
+  if ($display['type'] == 'file_player') {
+    $header = array('Setting', 'Value');
+    $rows = array();
+    foreach ($settings as $name => $value) {
+      $rows[] = array($name, $value);
+    }
+    $summary = theme('table', array('header' => $header, 'rows' => $rows));
+  }
+  return $summary;
 }
 
 /**
@@ -975,6 +1067,39 @@ function file_field_formatter_view($entity_type, $entity, $field, $instance, $la
         '#theme' => 'file_formatter_table',
         '#items' => $items,
       );
+      break;
+
+    case 'file_player':
+
+      // Display the values in a Media Player.
+      $settings = $display['settings'];
+      file_player_add_resources($settings['template'], $settings['debug']);
+      foreach ($items as $delta => $item) {
+
+        // The media tag for this item.
+        $mediatag = '';
+
+        // Determine if this is a video or audio based on the mimetype.
+        if (strpos($item['filemime'], 'video/') === 0) {
+          $mediatag = 'video';
+        }
+
+        if (strpos($item['filemime'], 'audio/') === 0) {
+          $mediatag = 'audio';
+        }
+
+        // Only show if this mediatag is valid.
+        if ($mediatag) {
+          $settings['id'] = 'player-' . drupal_clean_css_identifier($field['field_name']) . '-' . $delta;
+          $element[$delta] = array(
+            '#theme' => 'media_player',
+            '#tag' => $mediatag,
+            '#value' => '',
+            '#attributes' => file_player_get_attributes($item, $settings),
+            '#settings' => $settings
+          );
+        }
+      }
       break;
   }
 
