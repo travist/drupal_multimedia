@@ -179,14 +179,15 @@ function file_library_info() {
 function file_get_player_info() {
 
   // Implement hook_media_player_info
-  $cache = cache_get('media_player_info');
-  if ($cache) {
-    return $cache->data;
+  $cache = cache();
+  $info = $cache->get('media_player_info');
+  if ($info) {
+    return $info->data;
   }
   else {
     // Invoke all media_player_info and then set the cache.
     $player_info = module_invoke_all('media_player_info');
-    cache_set('media_player_info', $player_info);
+    $cache->set('media_player_info', $player_info);
     return $player_info;
   }
 }
