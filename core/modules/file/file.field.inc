@@ -406,7 +406,7 @@ function file_field_formatter_info() {
     'file_player' => array(
       'label' => t('Media Player'),
       'description' => t('Play this file within a Media Player.'),
-      'field types' => array('file'),
+      'field types' => array('file', 'text'),
       'settings' => array(
         'template' => 'default',
         'preload' => TRUE,
