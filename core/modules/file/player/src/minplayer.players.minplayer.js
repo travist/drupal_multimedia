@@ -11,29 +11,12 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {object} mediaFile The media file for this player.
+ * @param {function} ready Called when the player is ready.
  */
-minplayer.players.minplayer = function(context, options, mediaFile) {
-
-  // Called when the flash provides a media update.
-  this.onMediaUpdate = function(eventType) {
-    if (this.ready) {
-      switch (eventType) {
-        case 'mediaMeta':
-          minplayer.players.flash.prototype.onMeta.call(this);
-          break;
-        case 'mediaPlaying':
-          minplayer.players.flash.prototype.onPlaying.call(this);
-          break;
-        case 'mediaPaused':
-          minplayer.players.flash.prototype.onPaused.call(this);
-          break;
-      }
-    }
-  };
+minplayer.players.minplayer = function(context, options, ready) {
 
   // Derive from players flash.
-  minplayer.players.flash.call(this, context, options, mediaFile);
+  minplayer.players.flash.call(this, context, options, ready);
 };
 
 /** Derive from minplayer.players.flash. */
@@ -86,7 +69,6 @@ minplayer.players.minplayer.getPriority = function() {
 
 /**
  * @see minplayer.players.base#canPlay
- * @param {object} file A {@link minplayer.file} object.
  * @return {boolean} If this player can play this media type.
  */
 minplayer.players.minplayer.canPlay = function(file) {
@@ -114,16 +96,15 @@ minplayer.players.minplayer.canPlay = function(file) {
  * @return {object} The media player entity.
  */
 minplayer.players.minplayer.prototype.create = function() {
-
   minplayer.players.flash.prototype.create.call(this);
 
   // The flash variables for this flash player.
   var flashVars = {
     'id': this.options.id,
-    'debug': this.options.settings.debug,
+    'debug': this.options.debug,
     'config': 'nocontrols',
     'file': this.mediaFile.path,
-    'autostart': this.options.settings.autoplay
+    'autostart': this.options.autoplay
   };
 
   // Return a flash media player object.
@@ -131,7 +112,7 @@ minplayer.players.minplayer.prototype.create = function() {
     swf: this.options.swfplayer,
     id: this.options.id + '_player',
     playerType: 'flash',
-    width: this.options.settings.width,
+    width: this.options.width,
     height: '100%',
     flashvars: flashVars,
     wmode: this.options.wmode
@@ -139,12 +120,34 @@ minplayer.players.minplayer.prototype.create = function() {
 };
 
 /**
+ * Called when the Flash player has an update.
+ *
+ * @param {string} eventType The event that was triggered in the player.
+ */
+minplayer.players.minplayer.prototype.onMediaUpdate = function(eventType) {
+  switch (eventType) {
+    case 'mediaMeta':
+      this.onLoaded();
+      break;
+    case 'mediaPlaying':
+      this.onPlaying();
+      break;
+    case 'mediaPaused':
+      this.onPaused();
+      break;
+    case 'mediaComplete':
+      this.onComplete();
+      break;
+  }
+};
+
+/**
  * @see minplayer.players.base#load
  */
 minplayer.players.minplayer.prototype.load = function(file) {
   minplayer.players.flash.prototype.load.call(this, file);
-  if (this.isReady()) {
-    this.player.loadMedia(this.mediaFile.path, this.mediaFile.stream);
+  if (file && this.isReady()) {
+    this.media.loadMedia(file.path, file.stream);
   }
 };
 
@@ -154,7 +157,7 @@ minplayer.players.minplayer.prototype.load = function(file) {
 minplayer.players.minplayer.prototype.play = function() {
   minplayer.players.flash.prototype.play.call(this);
   if (this.isReady()) {
-    this.player.playMedia();
+    this.media.playMedia();
   }
 };
 
@@ -164,7 +167,7 @@ minplayer.players.minplayer.prototype.play = function() {
 minplayer.players.minplayer.prototype.pause = function() {
   minplayer.players.flash.prototype.pause.call(this);
   if (this.isReady()) {
-    this.player.pauseMedia();
+    this.media.pauseMedia();
   }
 };
 
@@ -174,7 +177,7 @@ minplayer.players.minplayer.prototype.pause = function() {
 minplayer.players.minplayer.prototype.stop = function() {
   minplayer.players.flash.prototype.stop.call(this);
   if (this.isReady()) {
-    this.player.stopMedia();
+    this.media.stopMedia();
   }
 };
 
@@ -184,7 +187,7 @@ minplayer.players.minplayer.prototype.stop = function() {
 minplayer.players.minplayer.prototype.seek = function(pos) {
   minplayer.players.flash.prototype.seek.call(this, pos);
   if (this.isReady()) {
-    this.player.seekMedia(pos);
+    this.media.seekMedia(pos);
   }
 };
 
@@ -194,51 +197,51 @@ minplayer.players.minplayer.prototype.seek = function(pos) {
 minplayer.players.minplayer.prototype.setVolume = function(vol) {
   minplayer.players.flash.prototype.setVolume.call(this, vol);
   if (this.isReady()) {
-    this.player.setVolume(vol);
+    this.media.setVolume(vol);
   }
 };
 
 /**
  * @see minplayer.players.base#getVolume
- * @return {number} The volume of the media; 0 to 1.
  */
-minplayer.players.minplayer.prototype.getVolume = function() {
+minplayer.players.minplayer.prototype.getVolume = function(callback) {
   if (this.isReady()) {
-    return this.player.getVolume();
-  }
-  else {
-    return minplayer.players.flash.prototype.getVolume.call(this);
+    callback(this.media.getVolume());
   }
 };
 
 /**
- * @see minplayer.players.flash#getPlayerDuration
- * @return {int} The player duration.
+ * @see minplayer.players.flash#getDuration
  */
-minplayer.players.minplayer.prototype.getPlayerDuration = function() {
-  return this.isReady() ? this.player.getDuration() : 0;
+minplayer.players.minplayer.prototype.getDuration = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getDuration());
+  }
 };
 
 /**
  * @see minplayer.players.base#getCurrentTime
- * @return {number} The current playhead time.
  */
-minplayer.players.minplayer.prototype.getCurrentTime = function() {
-  return this.isReady() ? this.player.getCurrentTime() : 0;
+minplayer.players.minplayer.prototype.getCurrentTime = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getCurrentTime());
+  }
 };
 
 /**
  * @see minplayer.players.base#getBytesLoaded
- * @return {number} Returns the bytes loaded from the media.
  */
-minplayer.players.minplayer.prototype.getBytesLoaded = function() {
-  return this.isReady() ? this.player.getMediaBytesLoaded() : 0;
+minplayer.players.minplayer.prototype.getBytesLoaded = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getMediaBytesLoaded());
+  }
 };
 
 /**
  * @see minplayer.players.base#getBytesTotal.
- * @return {number} The total number of bytes of the loaded media.
  */
-minplayer.players.minplayer.prototype.getBytesTotal = function() {
-  return this.isReady() ? this.player.getMediaBytesTotal() : 0;
+minplayer.players.minplayer.prototype.getBytesTotal = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getMediaBytesTotal());
+  }
 };

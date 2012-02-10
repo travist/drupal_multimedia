@@ -193,6 +193,8 @@ ul.inheritsList
 	
 	<li><a href="../symbols/jQuery.fn.minplayer.html">jQuery.fn.minplayer</a></li>
 	
+	<li><a href="../symbols/minplayer.async.html">minplayer.async</a></li>
+	
 	<li><a href="../symbols/minplayer.compatibility.html">minplayer.compatibility</a></li>
 	
 	<li><a href="../symbols/minplayer.controllers.base.html">minplayer.controllers.base</a></li>
@@ -203,6 +205,8 @@ ul.inheritsList
 	
 	<li><a href="../symbols/minplayer.flags.html">minplayer.flags</a></li>
 	
+	<li><a href="../symbols/minplayer.image.html">minplayer.image</a></li>
+	
 	<li><a href="../symbols/minplayer.player.html">minplayer.player</a></li>
 	
 	<li><a href="../symbols/minplayer.players.base.html">minplayer.players.base</a></li>
@@ -212,6 +216,8 @@ ul.inheritsList
 	<li><a href="../symbols/minplayer.players.html5.html">minplayer.players.html5</a></li>
 	
 	<li><a href="../symbols/minplayer.players.minplayer.html">minplayer.players.minplayer</a></li>
+	
+	<li><a href="../symbols/minplayer.players.vimeo.html">minplayer.players.vimeo</a></li>
 	
 	<li><a href="../symbols/minplayer.players.youtube.html">minplayer.players.youtube</a></li>
 	
@@ -325,9 +331,36 @@ the elements that they define by implementing the getElements method.
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.display.html#bind">bind</a></b>(types, data, fn)
+								</div>
+								<div class="description">Bind to a media event.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.display.html#construct">construct</a></b>()
+								</div>
+								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/minplayer.display.html#getElements">getElements</a></b>()
 								</div>
 								<div class="description">Returns all the jQuery elements that this component uses.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.display.html#getScaledRect">getScaledRect</a></b>(ratio, rect)
+								</div>
+								<div class="description">Returns a scaled rectangle provided a ratio and the container rect.</div>
 							</td>
 						</tr>
 					
@@ -340,13 +373,31 @@ the elements that they define by implementing the getElements method.
 							</td>
 						</tr>
 					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.display.html#onResize">onResize</a></b>()
+								</div>
+								<div class="description">Called when the window resizes.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.display.html#trigger">trigger</a></b>(type, data)
+								</div>
+								<div class="description">Trigger a media event.</div>
+							</td>
+						</tr>
+					
 					</tbody>
 				</table>
 				
 				
 				
 				<dl class="inheritsList">
-				<dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#construct">construct</a>, <a href="../symbols/minplayer.plugin.html#setPlayer">setPlayer</a></dd>
+				<dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#addPlugin">addPlugin</a>, <a href="../symbols/minplayer.plugin.html#destroy">destroy</a>, <a href="../symbols/minplayer.plugin.html#eachPlugin">eachPlugin</a>, <a href="../symbols/minplayer.plugin.html#getPlugin">getPlugin</a>, <a href="../symbols/minplayer.plugin.html#loadPlugins">loadPlugins</a>, <a href="../symbols/minplayer.plugin.html#setPlayer">setPlayer</a></dd>
 				</dl>
 				
 			
@@ -436,6 +487,93 @@ the elements that they define by implementing the getElements method.
 					Method Detail
 				</div>
 				
+					<a name="bind"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{object}</span>
+					<b>bind</b>(types, data, fn)
+					
+					</div>
+					<div class="description">
+						Bind to a media event.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{string}</span> <b>types</b>
+									
+								</dt>
+								<dd>The event type.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{object}</span> <b>data</b>
+									
+								</dt>
+								<dd>The data to bind with the event.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{function}</span> <b>fn</b>
+									
+								</dt>
+								<dd>The callback function.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{object}</span> The jQuery prototype.</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="construct"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>construct</b>()
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">See:</dt>
+							
+								<dd>minplayer.plugin.construct</dd>
+							
+							</dl>
+						
+
+					<hr />
+				
 					<a name="getElements"> </a>
 					<div class="fixedFont">
 					
@@ -461,6 +599,55 @@ the elements that they define by implementing the getElements method.
 							
 								<dd><span class="light fixedFont">{object}</span> An object which defines all the jQuery elements that
 this component uses.</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="getScaledRect"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{object}</span>
+					<b>getScaledRect</b>(ratio, rect)
+					
+					</div>
+					<div class="description">
+						Returns a scaled rectangle provided a ratio and the container rect.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{number}</span> <b>ratio</b>
+									
+								</dt>
+								<dd>The width/height ratio of what is being scaled.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{object}</span> <b>rect</b>
+									
+								</dt>
+								<dd>The bounding rectangle for scaling.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{object}</span> The Rectangle object of the scaled rectangle.</dd>
 							
 							</dl>
 						
@@ -499,6 +686,80 @@ this component uses.</dd>
 						
 						
 
+					<hr />
+				
+					<a name="onResize"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onResize</b>()
+					
+					</div>
+					<div class="description">
+						Called when the window resizes.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="trigger"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{object}</span>
+					<b>trigger</b>(type, data)
+					
+					</div>
+					<div class="description">
+						Trigger a media event.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{string}</span> <b>type</b>
+									
+								</dt>
+								<dd>The event type.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{object}</span> <b>data</b>
+									
+								</dt>
+								<dd>The event data object.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{object}</span> The jQuery prototype.</dd>
+							
+							</dl>
+						
+						
+						
+
 					
 				
 			
@@ -513,7 +774,7 @@ this component uses.</dd>
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Tue Jan 17 2012 21:48:50 GMT+0100 (CET)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Fri Feb 10 2012 02:13:35 GMT+0100 (CET)
 		</div>
 	</body>
 </html>

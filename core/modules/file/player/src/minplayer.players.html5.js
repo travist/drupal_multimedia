@@ -11,12 +11,12 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {object} mediaFile The media file for this player.
+ * @param {function} ready Called when the player is ready.
  */
-minplayer.players.html5 = function(context, options, mediaFile) {
+minplayer.players.html5 = function(context, options, ready) {
 
   // Derive players base.
-  minplayer.players.base.call(this, context, options, mediaFile);
+  minplayer.players.base.call(this, context, options, ready);
 };
 
 /** Derive from minplayer.players.base. */
@@ -35,7 +35,6 @@ minplayer.players.html5.getPriority = function() {
 
 /**
  * @see minplayer.players.base#canPlay
- * @param {object} file A {@link minplayer.file} object.
  * @return {boolean} If this player can play this media type.
  */
 minplayer.players.html5.canPlay = function(file) {
@@ -65,67 +64,69 @@ minplayer.players.html5.prototype.construct = function() {
   // Call base constructor.
   minplayer.players.base.prototype.construct.call(this);
 
-  // See if we are loaded.
-  this.loaded = false;
-
   // Store the this pointer...
   var _this = this;
 
   // For the HTML5 player, we will just pass events along...
-  if (this.player) {
-    this.player.addEventListener('abort', function() {
+  if (this.media) {
+    this.media.addEventListener('abort', function() {
       _this.trigger('abort');
-    }, true);
-    this.player.addEventListener('loadstart', function() {
-      _this.trigger('loadstart');
-    }, true);
-    this.player.addEventListener('loadeddata', function() {
-      _this.trigger('loadeddata');
-    }, true);
-    this.player.addEventListener('loadedmetadata', function() {
-      _this.trigger('loadedmetadata');
-    }, true);
-    this.player.addEventListener('canplaythrough', function() {
-      _this.trigger('canplaythrough');
-    }, true);
-    this.player.addEventListener('ended', function() {
-      _this.trigger('ended');
-    }, true);
-    this.player.addEventListener('pause', function() {
-      _this.trigger('pause');
-    }, true);
-    this.player.addEventListener('play', function() {
-      _this.trigger('play');
-    }, true);
-    this.player.addEventListener('playing', function() {
-      _this.trigger('playing');
-    }, true);
-    this.player.addEventListener('error', function() {
-      _this.trigger('error');
-    }, true);
-    this.player.addEventListener('waiting', function() {
-      _this.trigger('waiting');
-    }, true);
-    this.player.addEventListener('timeupdate', function(event) {
-      var dur = this.duration;
-      var cTime = this.currentTime;
-      _this.duration = dur;
-      _this.currentTime = cTime;
-      _this.trigger('timeupdate', {currentTime: cTime, duration: dur});
-    }, true);
-    this.player.addEventListener('durationchange', function() {
-      _this.duration = this.duration;
+    }, false);
+    this.media.addEventListener('loadstart', function() {
+      _this.onReady();
+    }, false);
+    this.media.addEventListener('loadeddata', function() {
+      _this.onLoaded();
+    }, false);
+    this.media.addEventListener('loadedmetadata', function() {
+      _this.onLoaded();
+    }, false);
+    this.media.addEventListener('canplaythrough', function() {
+      _this.onLoaded();
+    }, false);
+    this.media.addEventListener('ended', function() {
+      _this.onComplete();
+    }, false);
+    this.media.addEventListener('pause', function() {
+      _this.onPaused();
+    }, false);
+    this.media.addEventListener('play', function() {
+      _this.onPlaying();
+    }, false);
+    this.media.addEventListener('playing', function() {
+      _this.onPlaying();
+    }, false);
+    this.media.addEventListener('error', function() {
+      var error = '';
+      switch (this.error.code) {
+         case MEDIA_ERR_NETWORK:
+            error = 'Network error - please try again later.';
+            break;
+         case MEDIA_ERR_DECODE:
+            error = 'Video is broken..';
+            break;
+         case MEDIA_ERR_SRC_NOT_SUPPORTED:
+            error = 'Sorry, your browser can\'t play this video.';
+            break;
+       }
+      _this.trigger('error', error);
+    }, false);
+    this.media.addEventListener('waiting', function() {
+      _this.onWaiting();
+    }, false);
+    this.media.addEventListener('durationchange', function() {
+      _this.duration.set(this.duration);
       _this.trigger('durationchange', {duration: this.duration});
-    }, true);
-    this.player.addEventListener('progress', function(event) {
-      _this.trigger('progress', {loaded: event.loaded, total: event.total});
-    }, true);
-
+    }, false);
+    this.media.addEventListener('progress', function(event) {
+      _this.bytesTotal.set(event.total);
+      _this.bytesLoaded.set(event.loaded);
+    }, false);
     if (this.autoBuffer()) {
-      this.player.autobuffer = true;
+      this.media.autobuffer = true;
     } else {
-      this.player.autobuffer = false;
-      this.player.preload = 'none';
+      this.media.autobuffer = false;
+      this.media.preload = 'none';
     }
   }
 };
@@ -135,9 +136,9 @@ minplayer.players.html5.prototype.construct = function() {
  * @return {boolean} TRUE - the player is able to autobuffer.
  */
 minplayer.players.html5.prototype.autoBuffer = function() {
-  var preload = this.player.preload !== 'none';
-  if (typeof this.player.hasAttribute === 'function') {
-    return this.player.hasAttribute('preload') && preload;
+  var preload = this.media.preload !== 'none';
+  if (typeof this.media.hasAttribute === 'function') {
+    return this.media.hasAttribute('preload') && preload;
   }
   else {
     return false;
@@ -157,6 +158,7 @@ minplayer.players.html5.prototype.playerFound = function() {
  * @return {object} The media player entity.
  */
 minplayer.players.html5.prototype.create = function() {
+  minplayer.players.base.prototype.create.call(this);
   var element = document.createElement(this.mediaFile.type), attribute = '';
   for (attribute in this.options.attributes) {
     if (this.options.attributes.hasOwnProperty(attribute)) {
@@ -167,10 +169,10 @@ minplayer.players.html5.prototype.create = function() {
 };
 
 /**
- * @see minplayer.players.base#getPlayer
+ * @see minplayer.players.base#getMedia
  * @return {object} The media player object.
  */
-minplayer.players.html5.prototype.getPlayer = function() {
+minplayer.players.html5.prototype.getMedia = function() {
   return this.options.elements.media.eq(0)[0];
 };
 
@@ -178,19 +180,25 @@ minplayer.players.html5.prototype.getPlayer = function() {
  * @see minplayer.players.base#load
  */
 minplayer.players.html5.prototype.load = function(file) {
-  // Always call the base first on load...
-  minplayer.players.base.prototype.load.call(this, file);
 
-  if (this.loaded) {
-    // Change the source...
-    var code = '<source src="' + file.path + '" ';
-    code += 'type="' + file.mimetype + '"';
-    code += file.codecs ? ' codecs="' + file.path + '">' : '>';
-    this.options.elements.player.attr('src', '').empty().html(code);
+  if (file && this.isReady()) {
+
+    // Get the current source.
+    var src = this.options.elements.player.attr('src');
+
+    // If the source is different.
+    if (src != file.path) {
+
+      // Change the source...
+      var code = '<source src="' + file.path + '" ';
+      code += 'type="' + file.mimetype + '"';
+      code += file.codecs ? ' codecs="' + file.path + '">' : '>';
+      this.options.elements.player.attr('src', '').empty().html(code);
+    }
   }
 
-  // Set the loaded flag.
-  this.loaded = true;
+  // Always call the base first on load...
+  minplayer.players.base.prototype.load.call(this, file);
 };
 
 /**
@@ -198,7 +206,9 @@ minplayer.players.html5.prototype.load = function(file) {
  */
 minplayer.players.html5.prototype.play = function() {
   minplayer.players.base.prototype.play.call(this);
-  this.player.play();
+  if (this.isReady()) {
+    this.media.play();
+  }
 };
 
 /**
@@ -206,7 +216,9 @@ minplayer.players.html5.prototype.play = function() {
  */
 minplayer.players.html5.prototype.pause = function() {
   minplayer.players.base.prototype.pause.call(this);
-  this.player.pause();
+  if (this.isReady()) {
+    this.media.pause();
+  }
 };
 
 /**
@@ -214,8 +226,10 @@ minplayer.players.html5.prototype.pause = function() {
  */
 minplayer.players.html5.prototype.stop = function() {
   minplayer.players.base.prototype.stop.call(this);
-  this.player.pause();
-  this.player.src = '';
+  if (this.isReady()) {
+    this.media.pause();
+    this.media.src = '';
+  }
 };
 
 /**
@@ -223,7 +237,9 @@ minplayer.players.html5.prototype.stop = function() {
  */
 minplayer.players.html5.prototype.seek = function(pos) {
   minplayer.players.base.prototype.seek.call(this, pos);
-  this.player.currentTime = pos;
+  if (this.isReady()) {
+    this.media.currentTime = pos;
+  }
 };
 
 /**
@@ -231,22 +247,91 @@ minplayer.players.html5.prototype.seek = function(pos) {
  */
 minplayer.players.html5.prototype.setVolume = function(vol) {
   minplayer.players.base.prototype.setVolume.call(this, vol);
-  this.player.volume = vol;
+  if (this.isReady()) {
+    this.media.volume = vol;
+  }
 };
 
 /**
  * @see minplayer.players.base#getVolume
- * @return {number} The volume of the media; 0 to 1.
  */
-minplayer.players.html5.prototype.getVolume = function() {
-  return this.player.volume;
+minplayer.players.html5.prototype.getVolume = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.volume);
+  }
 };
 
 /**
  * @see minplayer.players.base#getDuration
- * @return {number} The duration of the loaded media.
  */
-minplayer.players.html5.prototype.getDuration = function() {
-  var dur = this.player.duration;
-  return (dur === Infinity) ? 0 : dur;
+minplayer.players.html5.prototype.getDuration = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.duration);
+  }
+};
+
+/**
+ * @see minplayer.players.base#getCurrentTime
+ */
+minplayer.players.html5.prototype.getCurrentTime = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.currentTime);
+  }
+};
+
+/**
+ * @see minplayer.players.base#getBytesLoaded
+ */
+minplayer.players.html5.prototype.getBytesLoaded = function(callback) {
+  if (this.isReady()) {
+    var loaded = 0;
+
+    // Check several different possibilities.
+    if (this.bytesLoaded.value) {
+      loaded = this.bytesLoaded.value;
+    }
+    else if (this.media.buffered &&
+        this.media.buffered.length > 0 &&
+        this.media.buffered.end &&
+        this.media.duration) {
+      loaded = this.media.buffered.end(0);
+    }
+    else if (this.media.bytesTotal != undefined &&
+             this.media.bytesTotal > 0 &&
+             this.media.bufferedBytes != undefined) {
+      loaded = this.media.bufferedBytes;
+    }
+
+    // Return the loaded amount.
+    callback(loaded);
+  }
+};
+
+/**
+ * @see minplayer.players.base#getBytesTotal
+ */
+minplayer.players.html5.prototype.getBytesTotal = function(callback) {
+  if (this.isReady()) {
+
+    var total = 0;
+
+    // Check several different possibilities.
+    if (this.bytesTotal.value) {
+      total = this.bytesTotal.value;
+    }
+    else if (this.media.buffered &&
+        this.media.buffered.length > 0 &&
+        this.media.buffered.end &&
+        this.media.duration) {
+      total = this.media.duration;
+    }
+    else if (this.media.bytesTotal != undefined &&
+             this.media.bytesTotal > 0 &&
+             this.media.bufferedBytes != undefined) {
+      total = this.media.bytesTotal;
+    }
+
+    // Return the loaded amount.
+    callback(total);
+  }
 };

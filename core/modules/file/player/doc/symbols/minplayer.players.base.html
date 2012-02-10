@@ -193,6 +193,8 @@ ul.inheritsList
 	
 	<li><a href="../symbols/jQuery.fn.minplayer.html">jQuery.fn.minplayer</a></li>
 	
+	<li><a href="../symbols/minplayer.async.html">minplayer.async</a></li>
+	
 	<li><a href="../symbols/minplayer.compatibility.html">minplayer.compatibility</a></li>
 	
 	<li><a href="../symbols/minplayer.controllers.base.html">minplayer.controllers.base</a></li>
@@ -203,6 +205,8 @@ ul.inheritsList
 	
 	<li><a href="../symbols/minplayer.flags.html">minplayer.flags</a></li>
 	
+	<li><a href="../symbols/minplayer.image.html">minplayer.image</a></li>
+	
 	<li><a href="../symbols/minplayer.player.html">minplayer.player</a></li>
 	
 	<li><a href="../symbols/minplayer.players.base.html">minplayer.players.base</a></li>
@@ -212,6 +216,8 @@ ul.inheritsList
 	<li><a href="../symbols/minplayer.players.html5.html">minplayer.players.html5</a></li>
 	
 	<li><a href="../symbols/minplayer.players.minplayer.html">minplayer.players.minplayer</a></li>
+	
+	<li><a href="../symbols/minplayer.players.vimeo.html">minplayer.players.vimeo</a></li>
 	
 	<li><a href="../symbols/minplayer.players.youtube.html">minplayer.players.youtube</a></li>
 	
@@ -262,7 +268,7 @@ ul.inheritsList
 						<td class="attributes">&nbsp;</td>
 						<td class="nameDescription" >
 							<div class="fixedFont">
-								<b><a href="../symbols/minplayer.players.base.html#constructor">minplayer.players.base</a></b>(context, options, mediaFile)
+								<b><a href="../symbols/minplayer.players.base.html#constructor">minplayer.players.base</a></b>(context, options, ready)
 							</div>
 							<div class="description"></div>
 						</td>
@@ -305,6 +311,16 @@ ul.inheritsList
 							</td>
 						</tr>
 					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont">
+								<b><a href="../symbols/minplayer.players.base.html#readyCallback">readyCallback</a></b>
+								</div>
+								<div class="description">The ready pointer to be called when the player is ready.</div>
+							</td>
+						</tr>
+					
 					</tbody>
 				</table>
 				
@@ -342,6 +358,15 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#clearIntervals">clearIntervals</a></b>()
+								</div>
+								<div class="description">Clears all the intervals.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#construct">construct</a></b>()
 								</div>
 								<div class="description"></div>
@@ -360,16 +385,43 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#destroy">destroy</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getBytesLoaded">getBytesLoaded</a></b>(callback)
 								</div>
-								<div class="description">Destroy the media player instance from the DOM.</div>
+								<div class="description">Return the bytes of media loaded.</div>
 							</td>
 						</tr>
 					
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getDuration">getDuration</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getBytesStart">getBytesStart</a></b>(callback)
+								</div>
+								<div class="description">Return the start bytes for the loaded media.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getBytesTotal">getBytesTotal</a></b>(callback)
+								</div>
+								<div class="description">Return the total amount of bytes.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getCurrentTime">getCurrentTime</a></b>(callback)
+								</div>
+								<div class="description">Get the current time for the media being played.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getDuration">getDuration</a></b>(callback)
 								</div>
 								<div class="description">Return the duration of the loaded media.</div>
 							</td>
@@ -378,9 +430,18 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getPlayer">getPlayer</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getMedia">getMedia</a></b>()
 								</div>
 								<div class="description">Returns the media player object.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&lt;static&gt; &nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont">minplayer.players.base.<b><a href="../symbols/minplayer.players.base.html#.getMediaId">getMediaId</a></b>(file)
+								</div>
+								<div class="description">Returns the ID for the media being played.</div>
 							</td>
 						</tr>
 					
@@ -396,9 +457,27 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getVolume">getVolume</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#getVolume">getVolume</a></b>(callback)
 								</div>
 								<div class="description">Get the volume from the loaded media.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#hasPlayLoader">hasPlayLoader</a></b>()
+								</div>
+								<div class="description">Determines if the player should show the playloader.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#isReady">isReady</a></b>()
+								</div>
+								<div class="description"></div>
 							</td>
 						</tr>
 					
@@ -408,6 +487,60 @@ ul.inheritsList
 								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#load">load</a></b>(file)
 								</div>
 								<div class="description">Loads a new media player.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#onComplete">onComplete</a></b>()
+								</div>
+								<div class="description">Should be called when the media is complete.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#onLoaded">onLoaded</a></b>()
+								</div>
+								<div class="description">Should be called when the media is done loading.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#onPaused">onPaused</a></b>()
+								</div>
+								<div class="description">Should be called when the media is paused.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#onPlaying">onPlaying</a></b>()
+								</div>
+								<div class="description">Should be called when the media is playing.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#onReady">onReady</a></b>()
+								</div>
+								<div class="description">Called when the player is ready to recieve events and commands.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#onWaiting">onWaiting</a></b>()
+								</div>
+								<div class="description">Should be called when the player is waiting.</div>
 							</td>
 						</tr>
 					
@@ -441,6 +574,15 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#reset">reset</a></b>()
+								</div>
+								<div class="description">Resets all variables.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#seek">seek</a></b>(pos)
 								</div>
 								<div class="description">Seek the loaded media.</div>
@@ -465,22 +607,13 @@ ul.inheritsList
 							</td>
 						</tr>
 					
-						<tr>
-							<td class="attributes">&nbsp;</td>
-							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.base.html#trigger">trigger</a></b>(type, data)
-								</div>
-								<div class="description">Trigger a media event.</div>
-							</td>
-						</tr>
-					
 					</tbody>
 				</table>
 				
 				
 				
 				<dl class="inheritsList">
-				<dt>Methods borrowed from class <a href="../symbols/minplayer.display.html">minplayer.display</a>: </dt><dd><a href="../symbols/minplayer.display.html#getElements">getElements</a>, <a href="../symbols/minplayer.display.html#isValid">isValid</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#setPlayer">setPlayer</a></dd>
+				<dt>Methods borrowed from class <a href="../symbols/minplayer.display.html">minplayer.display</a>: </dt><dd><a href="../symbols/minplayer.display.html#bind">bind</a>, <a href="../symbols/minplayer.display.html#getElements">getElements</a>, <a href="../symbols/minplayer.display.html#getScaledRect">getScaledRect</a>, <a href="../symbols/minplayer.display.html#isValid">isValid</a>, <a href="../symbols/minplayer.display.html#onResize">onResize</a>, <a href="../symbols/minplayer.display.html#trigger">trigger</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#addPlugin">addPlugin</a>, <a href="../symbols/minplayer.plugin.html#destroy">destroy</a>, <a href="../symbols/minplayer.plugin.html#eachPlugin">eachPlugin</a>, <a href="../symbols/minplayer.plugin.html#getPlugin">getPlugin</a>, <a href="../symbols/minplayer.plugin.html#loadPlugins">loadPlugins</a>, <a href="../symbols/minplayer.plugin.html#setPlayer">setPlayer</a></dd>
 				</dl>
 				
 			
@@ -495,7 +628,7 @@ ul.inheritsList
 				</div>
 				
 				<div class="fixedFont">
-						<b>minplayer.players.base</b>(context, options, mediaFile)
+						<b>minplayer.players.base</b>(context, options, ready)
 				</div>
 				
 				<div class="description">
@@ -523,10 +656,10 @@ ul.inheritsList
 								<dd>This components options.</dd>
 						
 							<dt>
-								<span class="light fixedFont">{object}</span>  <b>mediaFile</b>
+								<span class="light fixedFont">{function}</span>  <b>ready</b>
 								
 							</dt>
-								<dd>The media file for this player.</dd>
+								<dd>The callback function when the player is ready.</dd>
 						
 						</dl>
 					
@@ -588,6 +721,28 @@ ul.inheritsList
 						
 						
 
+					<hr />
+				
+					<a name="readyCallback"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>readyCallback</b>
+					
+					</div>
+					<div class="description">
+						The ready pointer to be called when the player is ready.
+						
+						
+					</div>
+					
+					
+
+						
+						
+						
+						
+
 					
 				
 			
@@ -635,6 +790,31 @@ ul.inheritsList
 								<dd><span class="light fixedFont">{boolean}</span> If this player can play this media type.</dd>
 							
 							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="clearIntervals"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>clearIntervals</b>()
+					
+					</div>
+					<div class="description">
+						Clears all the intervals.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
 						
 						
 						
@@ -705,15 +885,15 @@ ul.inheritsList
 
 					<hr />
 				
-					<a name="destroy"> </a>
+					<a name="getBytesLoaded"> </a>
 					<div class="fixedFont">
 					
-					
-					<b>destroy</b>()
+					<span class="light">{int}</span>
+					<b>getBytesLoaded</b>(callback)
 					
 					</div>
 					<div class="description">
-						Destroy the media player instance from the DOM.
+						Return the bytes of media loaded.
 						
 						
 					</div>
@@ -721,9 +901,156 @@ ul.inheritsList
 					
 					
 						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{function}</span> <b>callback</b>
+									
+								</dt>
+								<dd>Called when the bytes loaded is determined.</dd>
+							
+							</dl>
 						
 						
 						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{int}</span> The amount of bytes loaded.</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="getBytesStart"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{int}</span>
+					<b>getBytesStart</b>(callback)
+					
+					</div>
+					<div class="description">
+						Return the start bytes for the loaded media.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{function}</span> <b>callback</b>
+									
+								</dt>
+								<dd>Called when the start bytes is determined.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{int}</span> The bytes that were started.</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="getBytesTotal"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{int}</span>
+					<b>getBytesTotal</b>(callback)
+					
+					</div>
+					<div class="description">
+						Return the total amount of bytes.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{function}</span> <b>callback</b>
+									
+								</dt>
+								<dd>Called when the bytes total is determined.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{int}</span> The total amount of bytes for this media.</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="getCurrentTime"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{number}</span>
+					<b>getCurrentTime</b>(callback)
+					
+					</div>
+					<div class="description">
+						Get the current time for the media being played.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{function}</span> <b>callback</b>
+									
+								</dt>
+								<dd>Called when the time is determined.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{number}</span> The volume of the media; 0 to 1.</dd>
+							
+							</dl>
 						
 						
 						
@@ -734,7 +1061,7 @@ ul.inheritsList
 					<div class="fixedFont">
 					
 					<span class="light">{number}</span>
-					<b>getDuration</b>()
+					<b>getDuration</b>(callback)
 					
 					</div>
 					<div class="description">
@@ -745,6 +1072,17 @@ ul.inheritsList
 					
 					
 					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{function}</span> <b>callback</b>
+									
+								</dt>
+								<dd>Called when the duration is determined.</dd>
+							
+							</dl>
 						
 						
 						
@@ -762,11 +1100,11 @@ ul.inheritsList
 
 					<hr />
 				
-					<a name="getPlayer"> </a>
+					<a name="getMedia"> </a>
 					<div class="fixedFont">
 					
 					<span class="light">{object}</span>
-					<b>getPlayer</b>()
+					<b>getMedia</b>()
 					
 					</div>
 					<div class="description">
@@ -786,6 +1124,49 @@ ul.inheritsList
 							<dt class="heading">Returns:</dt>
 							
 								<dd><span class="light fixedFont">{object}</span> The media player object.</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name=".getMediaId"> </a>
+					<div class="fixedFont">&lt;static&gt; 
+					
+					<span class="light">{string}</span>
+					<span class="light">minplayer.players.base.</span><b>getMediaId</b>(file)
+					
+					</div>
+					<div class="description">
+						Returns the ID for the media being played.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{object}</span> <b>file</b>
+									
+								</dt>
+								<dd>A <a href="../symbols/minplayer.file.html">minplayer.file</a> object.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{string}</span> The ID for the provided media.</dd>
 							
 							</dl>
 						
@@ -830,11 +1211,54 @@ ul.inheritsList
 					<div class="fixedFont">
 					
 					<span class="light">{number}</span>
-					<b>getVolume</b>()
+					<b>getVolume</b>(callback)
 					
 					</div>
 					<div class="description">
 						Get the volume from the loaded media.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{function}</span> <b>callback</b>
+									
+								</dt>
+								<dd>Called when the volume is determined.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{number}</span> The volume of the media; 0 to 1.</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="hasPlayLoader"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{bool}</span>
+					<b>hasPlayLoader</b>()
+					
+					</div>
+					<div class="description">
+						Determines if the player should show the playloader.
 						
 						
 					</div>
@@ -849,11 +1273,50 @@ ul.inheritsList
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{number}</span> The volume of the media; 0 to 1.</dd>
+								<dd><span class="light fixedFont">{bool}</span> If this player implements its own playLoader.</dd>
 							
 							</dl>
 						
 						
+						
+
+					<hr />
+				
+					<a name="isReady"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{boolean}</span>
+					<b>isReady</b>()
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{boolean}</span> Checks to see if the Flash is ready.</dd>
+							
+							</dl>
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">See:</dt>
+							
+								<dd><a href="../symbols/minplayer.players.base.html#isReady">minplayer.players.base#isReady</a></dd>
+							
+							</dl>
 						
 
 					<hr />
@@ -884,6 +1347,156 @@ ul.inheritsList
 								<dd>A <a href="../symbols/minplayer.file.html">minplayer.file</a> object.</dd>
 							
 							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onComplete"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onComplete</b>()
+					
+					</div>
+					<div class="description">
+						Should be called when the media is complete.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onLoaded"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onLoaded</b>()
+					
+					</div>
+					<div class="description">
+						Should be called when the media is done loading.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onPaused"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onPaused</b>()
+					
+					</div>
+					<div class="description">
+						Should be called when the media is paused.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onPlaying"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onPlaying</b>()
+					
+					</div>
+					<div class="description">
+						Should be called when the media is playing.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onReady"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onReady</b>()
+					
+					</div>
+					<div class="description">
+						Called when the player is ready to recieve events and commands.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onWaiting"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onWaiting</b>()
+					
+					</div>
+					<div class="description">
+						Should be called when the player is waiting.
+						
+						
+					</div>
+					
+					
+					
 						
 						
 						
@@ -970,6 +1583,31 @@ ul.inheritsList
 								<dd><span class="light fixedFont">{boolean}</span> TRUE - if the player is in the DOM, FALSE otherwise.</dd>
 							
 							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="reset"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>reset</b>()
+					
+					</div>
+					<div class="description">
+						Resets all variables.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
 						
 						
 						
@@ -1071,48 +1709,6 @@ ul.inheritsList
 						
 						
 
-					<hr />
-				
-					<a name="trigger"> </a>
-					<div class="fixedFont">
-					
-					
-					<b>trigger</b>(type, data)
-					
-					</div>
-					<div class="description">
-						Trigger a media event.
-						
-						
-					</div>
-					
-					
-					
-						
-							<dl class="detailList">
-							<dt class="heading">Parameters:</dt>
-							
-								<dt>
-									<span class="light fixedFont">{string}</span> <b>type</b>
-									
-								</dt>
-								<dd>The event type.</dd>
-							
-								<dt>
-									<span class="light fixedFont">{object}</span> <b>data</b>
-									
-								</dt>
-								<dd>The event data object.</dd>
-							
-							</dl>
-						
-						
-						
-						
-						
-						
-						
-
 					
 				
 			
@@ -1127,7 +1723,7 @@ ul.inheritsList
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Tue Jan 17 2012 21:48:50 GMT+0100 (CET)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Fri Feb 10 2012 02:13:36 GMT+0100 (CET)
 		</div>
 	</body>
 </html>

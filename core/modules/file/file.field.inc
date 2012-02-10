@@ -413,7 +413,9 @@ function file_field_formatter_info() {
         'autoplay' => FALSE,
         'loop' => FALSE,
         'width' => '100%',
-        'height' => '350px',
+        'height' => '400px',
+        'volume' => 80,
+        'sources' => FALSE,
         'debug' => FALSE
       )
     )
@@ -469,6 +471,19 @@ function file_field_formatter_settings_form($field, $instance, $view_mode, $form
       '#title' => t('Height'),
       '#type' => 'textfield',
       '#default_value' => $settings['height']
+    );
+
+    $element['volume'] = array(
+      '#title' => t('Initial Volume (0 - 100)'),
+      '#type' => 'textfield',
+      '#default_value' => $settings['volume']
+    );
+
+    $element['sources'] = array(
+      '#title' => t('Allow multiple sources'),
+      '#description' => t('Checking this will turn multiple instances of files into multiple sources within the media element.'),
+      '#type' => 'checkbox',
+      '#default_value' => $settings['sources']
     );
 
     $element['debug'] = array(
@@ -1063,6 +1078,24 @@ function theme_file_upload_help($variables) {
 }
 
 /**
+ * Returns the media tag for this file.
+ *
+ * @param type $item The field item.
+ * @return type
+ */
+function file_get_media_tag($field) {
+  if (isset($field['filemime'])) {
+    if (strpos($field['filemime'], 'video/') === 0) {
+      return 'video';
+    }
+    if (strpos($field['filemime'], 'audio/') === 0) {
+      return 'audio';
+    }
+  }
+  return isset($field['value']) ? 'video' : '';
+}
+
+/**
  * Implements hook_field_formatter_view().
  */
 function file_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
@@ -1095,34 +1128,51 @@ function file_field_formatter_view($entity_type, $entity, $field, $instance, $la
       break;
 
     case 'file_player':
-
-      // Display the values in a Media Player.
+      // Get the display settings.
       $settings = $display['settings'];
-      file_player_add_resources($settings['template'], $settings['debug']);
-      foreach ($items as $delta => $item) {
 
-        // The media tag for this item.
+      // Get the ID for this media player.
+      $id = 'player-' . drupal_clean_css_identifier($field['field_name']);
+
+      // If they wish to show all sources within a single media element.
+      if ($settings['sources']) {
+
+        // Get the media tag.
         $mediatag = '';
-
-        // Determine if this is a video or audio based on the mimetype.
-        if (strpos($item['filemime'], 'video/') === 0) {
-          $mediatag = 'video';
+        foreach ($items as $delta => $item) {
+          if ($mediatag = file_get_media_tag($item)) {
+            break;
+          }
         }
 
-        if (strpos($item['filemime'], 'audio/') === 0) {
-          $mediatag = 'audio';
-        }
-
-        // Only show if this mediatag is valid.
+        // If the mediatag exists, then theme the player.
         if ($mediatag) {
-          $settings['id'] = 'player-' . drupal_clean_css_identifier($field['field_name']) . '-' . $delta;
+          $settings['id'] = $id;
           $element[$delta] = array(
             '#theme' => 'media_player',
             '#tag' => $mediatag,
-            '#value' => '',
-            '#attributes' => file_player_get_attributes($item, $settings),
-            '#settings' => $settings
+            '#attributes' => file_player_get_attributes($settings),
+            '#settings' => $settings,
+            '#sources' => $items
           );
+        }
+      }
+      else {
+
+        // Iterate through all the items.
+        foreach ($items as $delta => $item) {
+
+          // Get the media tag.
+          if ($mediatag = file_get_media_tag($item)) {
+            $settings['id'] = $id . '-' . $delta;
+            $element[$delta] = array(
+              '#theme' => 'media_player',
+              '#tag' => $mediatag,
+              '#attributes' => file_player_get_attributes($settings),
+              '#settings' => $settings,
+              '#sources' => array($item)
+            );
+          }
         }
       }
       break;

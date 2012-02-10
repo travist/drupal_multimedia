@@ -6,91 +6,27 @@ minplayer.players = minplayer.players || {};
 
 /**
  * @constructor
- * @extends minplayer.display
- * @class The Flash media player class to control the flash fallback.
+ * @extends minplayer.players.base
+ * @class The YouTube media player.
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {object} mediaFile The media file for this player.
+ * @param {function} ready Called when the player is ready.
  */
-minplayer.players.youtube = function(context, options, mediaFile) {
-
-  // Derive from players flash.
-  minplayer.players.flash.call(this, context, options, mediaFile);
+minplayer.players.youtube = function(context, options, ready) {
 
   /** The quality of the YouTube stream. */
   this.quality = 'default';
+
+  // Derive from players base.
+  minplayer.players.base.call(this, context, options, ready);
 };
 
-/** Derive from minplayer.players.flash. */
-minplayer.players.youtube.prototype = new minplayer.players.flash();
+/** Derive from minplayer.players.base. */
+minplayer.players.youtube.prototype = new minplayer.players.base();
 
 /** Reset the constructor. */
 minplayer.players.youtube.prototype.constructor = minplayer.players.youtube;
-
-/**
- * Called when the YouTube player is ready.
- *
- * @param {string} id The media player ID.
- */
-window.onYouTubePlayerReady = function(id) {
-  if (minplayer.player[id]) {
-    minplayer.player[id].media.onReady();
-  }
-};
-
-/**
- * @see minplayer.plugin.construct
- */
-minplayer.players.youtube.prototype.construct = function() {
-
-  // Call flash constructor.
-  minplayer.players.flash.prototype.construct.call(this);
-
-  // Translates the player state for the YouTube API player.
-  this.getPlayerState = function(playerState) {
-    switch (playerState) {
-      case 5:
-        return 'ready';
-      case 3:
-        return 'waiting';
-      case 2:
-        return 'pause';
-      case 1:
-        return 'play';
-      case 0:
-        return 'ended';
-      case -1:
-        return 'abort';
-      default:
-        return 'unknown';
-    }
-  };
-
-  // Create our callback functions.
-  var _this = this;
-  window[this.options.id + 'StateChange'] = function(newState) {
-    _this.trigger(_this.getPlayerState(newState));
-  };
-
-  window[this.options.id + 'PlayerError'] = function(errorCode) {
-    _this.trigger('error', errorCode);
-  };
-
-  window[this.options.id + 'QualityChange'] = function(newQuality) {
-    _this.quality = newQuality;
-  };
-
-  // Add our event listeners.
-  if (this.player) {
-    var onStateChange = this.options.id + 'StateChange';
-    var onError = this.options.id + 'PlayerError';
-    var onQuality = this.options.id + 'QualityChange';
-    this.player.addEventListener('onStateChange', onStateChange);
-    this.player.addEventListener('onError', onError);
-    this.player.addEventListener('onPlaybackQualityChange', onQuality);
-  }
-};
 
 /**
  * @see minplayer.players.base#getPriority
@@ -102,7 +38,6 @@ minplayer.players.youtube.getPriority = function() {
 
 /**
  * @see minplayer.players.base#canPlay
- * @param {object} file A {@link minplayer.file} object.
  * @return {boolean} If this player can play this media type.
  */
 minplayer.players.youtube.canPlay = function(file) {
@@ -117,59 +52,204 @@ minplayer.players.youtube.canPlay = function(file) {
 };
 
 /**
+ * Return the ID for a provided media file.
+ *
+ * @param {object} file A {@link minplayer.file} object.
+ * @return {string} The ID for the provided media.
+ */
+minplayer.players.youtube.getMediaId = function(file) {
+  var regex = /^http[s]?\:\/\/(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9]+)/i;
+  if (file.path.search(regex) === 0) {
+    return file.path.replace(regex, '$2');
+  }
+  else {
+    return file.path;
+  }
+};
+
+/**
+ * Register this youtube player so that multiple players can be present
+ * on the same page without event collision.
+ */
+minplayer.players.youtube.prototype.register = function() {
+
+  /**
+   * Register the standard youtube api ready callback.
+   */
+  window.onYouTubePlayerAPIReady = function() {
+
+    // Iterate through all of the player instances.
+    for (var id in minplayer.plugin.instances) {
+
+      // Make sure this is a property.
+      if (minplayer.plugin.instances.hasOwnProperty(id)) {
+
+        // Get the instance and check to see if it is a youtube player.
+        var instance = minplayer.plugin.instances[id]['player'];
+        if (instance.currentPlayer == 'youtube') {
+
+          // Create a new youtube player object for this instance only.
+          var playerId = instance.options.id + '-player';
+          instance.player.media = new YT.Player(playerId, {
+            events: {
+              'onReady': function(event) {
+                instance.player.onReady(event);
+              },
+              'onStateChange': function(event) {
+                instance.player.onPlayerStateChange(event);
+              },
+              'onPlaybackQualityChange': function(newQuality) {
+                instance.player.onQualityChange(newQuality);
+              },
+              'onError': function(errorCode) {
+                instance.player.onError(errorCode);
+              }
+            }
+          });
+        }
+      }
+    }
+  }
+};
+
+/**
+ * Translates the player state for the YouTube API player.
+ *
+ * @param {number} playerState The YouTube player state.
+ */
+minplayer.players.youtube.prototype.setPlayerState = function(playerState) {
+  switch (playerState) {
+    case YT.PlayerState.CUED:
+      break;
+    case YT.PlayerState.BUFFERING:
+      this.onWaiting();
+      break;
+    case YT.PlayerState.PAUSED:
+      this.onPaused();
+      break;
+    case YT.PlayerState.PLAYING:
+      this.onPlaying();
+      break;
+    case YT.PlayerState.ENDED:
+      this.onComplete();
+      break;
+    default:
+      break;
+  }
+};
+
+/**
+ * Called when an error occurs.
+ *
+ * @param {string} event The onReady event that was triggered.
+ */
+minplayer.players.youtube.prototype.onReady = function(event) {
+  minplayer.players.base.prototype.onReady.call(this);
+  this.onLoaded();
+};
+
+/**
+ * Checks to see if this player can be found.
+ * @return {bool} TRUE - Player is found, FALSE - otherwise.
+ */
+minplayer.players.youtube.prototype.playerFound = function() {
+  var iframe = this.display.find('iframe#' + this.options.id + '-player');
+  return (iframe.length > 0);
+};
+
+/**
+ * Called when the player state changes.
+ *
+ * @param {object} event A JavaScript Event.
+ */
+minplayer.players.youtube.prototype.onPlayerStateChange = function(event) {
+  this.setPlayerState(event.data);
+};
+
+/**
+ * Called when the player quality changes.
+ *
+ * @param {string} newQuality The new quality for the change.
+ */
+minplayer.players.youtube.prototype.onQualityChange = function(newQuality) {
+  this.quality = newQuality;
+};
+
+/**
+ * Called when an error occurs.
+ *
+ * @param {string} errorCode The error that was triggered.
+ */
+minplayer.players.youtube.prototype.onError = function(errorCode) {
+  this.trigger('error', errorCode);
+};
+
+/**
+ * Determines if the player should show the playloader.
+ *
+ * @return {bool} If this player implements its own playLoader.
+ */
+minplayer.players.youtube.prototype.hasPlayLoader = function() {
+  return true;
+};
+
+/**
  * @see minplayer.players.base#create
  * @return {object} The media player entity.
  */
 minplayer.players.youtube.prototype.create = function() {
+  minplayer.players.base.prototype.create.call(this);
 
-  minplayer.players.base.prototype.flash.call(this);
+  // Insert the YouTube iframe API player.
+  var tag = document.createElement('script');
+  tag.src = 'http://www.youtube.com/player_api?enablejsapi=1';
+  var firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-  // The flash variables for this flash player.
-  var flashVars = {
-    'file': this.mediaFile.path,
-    'autostart': this.options.settings.autoplay
-  };
+  // Now register this player.
+  this.register();
 
-  // Return a flash media player object.
-  var rand = Math.floor(Math.random() * 1000000);
-  var flashPlayer = 'http://www.youtube.com/apiplayer?rand=' + rand;
-  flashPlayer += '&amp;version=3&amp;enablejsapi=1&amp;playerapiid=';
-  flashPlayer += this.options.id;
-  return minplayer.players.flash.getFlash({
-    swf: flashPlayer,
-    id: this.options.id + '_player',
-    playerType: 'flash',
-    width: this.options.settings.width,
-    height: '100%',
-    flashvars: flashVars,
-    wmode: this.options.wmode
+  // Create the iframe for this player.
+  var iframe = document.createElement('iframe');
+  iframe.setAttribute('id', this.options.id + '-player');
+  iframe.setAttribute('type', 'text/html');
+  iframe.setAttribute('width', '100%');
+  iframe.setAttribute('height', '100%');
+  iframe.setAttribute('frameborder', '0');
+
+  // Get the source.
+  var src = 'http://www.youtube.com/embed/';
+  src += this.mediaFile.id + '?';
+
+  // Determine the origin of this script.
+  var origin = location.protocol;
+  origin += '//' + location.hostname;
+  origin += (location.port && ':' + location.port);
+
+  // Add the parameters to the src.
+  src += jQuery.param({
+    'wmode': 'opaque',
+    'controls': 0,
+    'enablejsapi': 1,
+    'origin': origin,
+    'autoplay': this.options.autoplay,
+    'loop': this.options.loop
   });
-};
 
-/**
- * Return the Regular Expression to find a YouTube ID.
- *
- * @return {RegEx} A regular expression to find a YouTube ID.
- */
-minplayer.players.youtube.prototype.regex = function() {
-  return /^http[s]?\:\/\/(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9]+)/i;
+  // Set the source of the iframe.
+  iframe.setAttribute('src', src);
+
+  // Return the player.
+  return iframe;
 };
 
 /**
  * @see minplayer.players.base#load
  */
 minplayer.players.youtube.prototype.load = function(file) {
-  minplayer.players.flash.prototype.load.call(this, file);
-  if (this.isReady()) {
-    var regex = this.regex();
-    var id = '';
-    if (this.mediaFile.path.search(regex) === 0) {
-      id = this.mediaFile.path.replace(regex, '$2');
-    }
-    else {
-      id = this.mediaFile.path;
-    }
-    this.player.loadVideoById(id, 0, this.quality);
+  minplayer.players.base.prototype.load.call(this, file);
+  if (file && this.isReady()) {
+    this.media.loadVideoById(file.id, 0, this.quality);
   }
 };
 
@@ -177,9 +257,9 @@ minplayer.players.youtube.prototype.load = function(file) {
  * @see minplayer.players.base#play
  */
 minplayer.players.youtube.prototype.play = function() {
-  minplayer.players.flash.prototype.play.call(this);
+  minplayer.players.base.prototype.play.call(this);
   if (this.isReady()) {
-    this.player.playVideo();
+    this.media.playVideo();
   }
 };
 
@@ -187,9 +267,9 @@ minplayer.players.youtube.prototype.play = function() {
  * @see minplayer.players.base#pause
  */
 minplayer.players.youtube.prototype.pause = function() {
-  minplayer.players.flash.prototype.pause.call(this);
+  minplayer.players.base.prototype.pause.call(this);
   if (this.isReady()) {
-    this.player.pauseVideo();
+    this.media.pauseVideo();
   }
 };
 
@@ -197,9 +277,9 @@ minplayer.players.youtube.prototype.pause = function() {
  * @see minplayer.players.base#stop
  */
 minplayer.players.youtube.prototype.stop = function() {
-  minplayer.players.flash.prototype.stop.call(this);
+  minplayer.players.base.prototype.stop.call(this);
   if (this.isReady()) {
-    this.player.stopVideo();
+    this.media.stopVideo();
   }
 };
 
@@ -207,9 +287,9 @@ minplayer.players.youtube.prototype.stop = function() {
  * @see minplayer.players.base#seek
  */
 minplayer.players.youtube.prototype.seek = function(pos) {
-  minplayer.players.flash.prototype.seek.call(this, pos);
+  minplayer.players.base.prototype.seek.call(this, pos);
   if (this.isReady()) {
-    this.player.seekTo(pos, true);
+    this.media.seekTo(pos, true);
   }
 };
 
@@ -217,53 +297,62 @@ minplayer.players.youtube.prototype.seek = function(pos) {
  * @see minplayer.players.base#setVolume
  */
 minplayer.players.youtube.prototype.setVolume = function(vol) {
-  minplayer.players.flash.prototype.setVolume.call(this, vol);
+  minplayer.players.base.prototype.setVolume.call(this, vol);
   if (this.isReady()) {
-    this.player.setVolume(vol * 100);
+    this.media.setVolume(vol * 100);
   }
 };
 
 /**
  * @see minplayer.players.base#getVolume
- * @return {number} The volume of the media; 0 to 1.
  */
-minplayer.players.youtube.prototype.getVolume = function() {
+minplayer.players.youtube.prototype.getVolume = function(callback) {
   if (this.isReady()) {
-    return (this.player.getVolume() / 100);
-  }
-  else {
-    return minplayer.players.flash.prototype.getVolume.call(this);
+    callback(this.media.getVolume());
   }
 };
 
 /**
- * @see minplayer.players.flash#getPlayerDuration.
- * @return {int} The player duration.
+ * @see minplayer.players.flash#getDuration.
  */
-minplayer.players.youtube.prototype.getPlayerDuration = function() {
-  return this.isReady() ? this.player.getDuration() : 0;
+minplayer.players.youtube.prototype.getDuration = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getDuration());
+  }
 };
 
 /**
  * @see minplayer.players.base#getCurrentTime
- * @return {number} The current playhead time.
  */
-minplayer.players.youtube.prototype.getCurrentTime = function() {
-  return this.isReady() ? this.player.getCurrentTime() : 0;
+minplayer.players.youtube.prototype.getCurrentTime = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getCurrentTime());
+  }
+};
+
+/**
+ * @see minplayer.players.base#getBytesStart.
+ */
+minplayer.players.youtube.prototype.getBytesStart = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getVideoStartBytes());
+  }
 };
 
 /**
  * @see minplayer.players.base#getBytesLoaded.
- * @return {number} Returns the bytes loaded from the media.
  */
-minplayer.players.youtube.prototype.getBytesLoaded = function() {
-  return this.isReady() ? this.player.getVideoBytesLoaded() : 0;
+minplayer.players.youtube.prototype.getBytesLoaded = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getVideoBytesLoaded());
+  }
 };
 
 /**
  * @see minplayer.players.base#getBytesTotal.
- * @return {number} The total number of bytes of the loaded media.
  */
-minplayer.players.youtube.prototype.getBytesTotal = function() {
-  return this.isReady() ? this.player.getVideoBytesTotal() : 0;
+minplayer.players.youtube.prototype.getBytesTotal = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getVideoBytesTotal());
+  }
 };

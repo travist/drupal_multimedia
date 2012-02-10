@@ -5,7 +5,7 @@
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 		<meta name="generator" content="JsDoc Toolkit" />
 		
-		<title>JsDoc Reference - minplayer.players.flash</title>
+		<title>JsDoc Reference - minplayer.async</title>
 
 		<style type="text/css">
 			/* default.css */
@@ -236,26 +236,25 @@ ul.inheritsList
 <!-- ============================== class title ============================ -->
 			<h1 class="classTitle">
 				
-				Class minplayer.players.flash
+				Class minplayer.async
 			</h1>
 
 <!-- ============================== class summary ========================== -->			
 			<p class="description">
 				
-				<br />Extends
-					<a href="../symbols/minplayer.display.html">minplayer.display</a>.<br />
 				
 			
-				The Flash media player class to control the flash fallback.
+				This class keeps track of asynchronous get requests for certain
+variables within the player.
 				
 				
-					<br /><i>Defined in: </i> <a href="../symbols/src/src_minplayer.players.flash.js.html">minplayer.players.flash.js</a>.
+					<br /><i>Defined in: </i> <a href="../symbols/src/src_minplayer.async.js.html">minplayer.async.js</a>.
 				
 			</p>
 
 <!-- ============================== constructor summary ==================== -->			
 			
-			<table class="summaryTable" cellspacing="0" summary="A summary of the constructor documented in the class minplayer.players.flash.">
+			<table class="summaryTable" cellspacing="0" summary="A summary of the constructor documented in the class minplayer.async.">
 				<caption>Class Summary</caption>
 				<thead>
 					<tr>
@@ -268,7 +267,7 @@ ul.inheritsList
 						<td class="attributes">&nbsp;</td>
 						<td class="nameDescription" >
 							<div class="fixedFont">
-								<b><a href="../symbols/minplayer.players.flash.html#constructor">minplayer.players.flash</a></b>(context, options, ready)
+								<b><a href="../symbols/minplayer.async.html#constructor">minplayer.async</a></b>()
 							</div>
 							<div class="description"></div>
 						</td>
@@ -281,7 +280,7 @@ ul.inheritsList
 			
 				
 				
-				<table class="summaryTable" cellspacing="0" summary="A summary of the fields documented in the class minplayer.players.flash.">
+				<table class="summaryTable" cellspacing="0" summary="A summary of the fields documented in the class minplayer.async.">
 					<caption>Field Summary</caption>
 					<thead>
 						<tr>
@@ -295,9 +294,19 @@ ul.inheritsList
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
 								<div class="fixedFont">
-								<b><a href="../symbols/minplayer.players.flash.html#constructor">constructor</a></b>
+								<b><a href="../symbols/minplayer.async.html#queue">queue</a></b>
 								</div>
-								<div class="description">Reset the constructor.</div>
+								<div class="description">The queue of callbacks to call when this value is determined.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont">
+								<b><a href="../symbols/minplayer.async.html#value">value</a></b>
+								</div>
+								<div class="description">The final value of this asynchronous variable.</div>
 							</td>
 						</tr>
 					
@@ -306,17 +315,13 @@ ul.inheritsList
 				
 				
 				
-				<dl class="inheritsList">
-				
-				</dl>
-				
 			
 
 <!-- ============================== methods summary ======================== -->
 			
 				
 				
-				<table class="summaryTable" cellspacing="0" summary="A summary of the methods documented in the class minplayer.players.flash.">
+				<table class="summaryTable" cellspacing="0" summary="A summary of the methods documented in the class minplayer.async.">
 					<caption>Method Summary</caption>
 					<thead>
 						<tr>
@@ -327,47 +332,20 @@ ul.inheritsList
 					<tbody>
 					
 						<tr>
-							<td class="attributes">&lt;static&gt; &nbsp;</td>
+							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont">minplayer.players.flash.<b><a href="../symbols/minplayer.players.flash.html#.canPlay">canPlay</a></b>(file)
+								<div class="fixedFont"><b><a href="../symbols/minplayer.async.html#get">get</a></b>(callback, pollValue)
 								</div>
-								<div class="description"></div>
-							</td>
-						</tr>
-					
-						<tr>
-							<td class="attributes">&lt;static&gt; &nbsp;</td>
-							<td class="nameDescription">
-								<div class="fixedFont">minplayer.players.flash.<b><a href="../symbols/minplayer.players.flash.html#.getFlash">getFlash</a></b>(params)
-								</div>
-								<div class="description">API to return the Flash player code provided params.</div>
+								<div class="description">Retrieve the value of this variable.</div>
 							</td>
 						</tr>
 					
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.flash.html#getMedia">getMedia</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.async.html#set">set</a></b>(val)
 								</div>
-								<div class="description"></div>
-							</td>
-						</tr>
-					
-						<tr>
-							<td class="attributes">&lt;static&gt; &nbsp;</td>
-							<td class="nameDescription">
-								<div class="fixedFont">minplayer.players.flash.<b><a href="../symbols/minplayer.players.flash.html#.getPriority">getPriority</a></b>()
-								</div>
-								<div class="description"></div>
-							</td>
-						</tr>
-					
-						<tr>
-							<td class="attributes">&nbsp;</td>
-							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.flash.html#playerFound">playerFound</a></b>()
-								</div>
-								<div class="description"></div>
+								<div class="description">Sets the value of an asynchronous value.</div>
 							</td>
 						</tr>
 					
@@ -375,10 +353,6 @@ ul.inheritsList
 				</table>
 				
 				
-				
-				<dl class="inheritsList">
-				<dt>Methods borrowed from class <a href="../symbols/minplayer.display.html">minplayer.display</a>: </dt><dd><a href="../symbols/minplayer.display.html#bind">bind</a>, <a href="../symbols/minplayer.display.html#construct">construct</a>, <a href="../symbols/minplayer.display.html#getElements">getElements</a>, <a href="../symbols/minplayer.display.html#getScaledRect">getScaledRect</a>, <a href="../symbols/minplayer.display.html#isValid">isValid</a>, <a href="../symbols/minplayer.display.html#onResize">onResize</a>, <a href="../symbols/minplayer.display.html#trigger">trigger</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#addPlugin">addPlugin</a>, <a href="../symbols/minplayer.plugin.html#destroy">destroy</a>, <a href="../symbols/minplayer.plugin.html#eachPlugin">eachPlugin</a>, <a href="../symbols/minplayer.plugin.html#getPlugin">getPlugin</a>, <a href="../symbols/minplayer.plugin.html#loadPlugins">loadPlugins</a>, <a href="../symbols/minplayer.plugin.html#setPlayer">setPlayer</a></dd>
-				</dl>
 				
 			
 <!-- ============================== events summary ======================== -->
@@ -392,7 +366,7 @@ ul.inheritsList
 				</div>
 				
 				<div class="fixedFont">
-						<b>minplayer.players.flash</b>(context, options, ready)
+						<b>minplayer.async</b>()
 				</div>
 				
 				<div class="description">
@@ -403,29 +377,6 @@ ul.inheritsList
 				
 				
 				
-					
-						<dl class="detailList">
-						<dt class="heading">Parameters:</dt>
-						
-							<dt>
-								<span class="light fixedFont">{object}</span>  <b>context</b>
-								
-							</dt>
-								<dd>The jQuery context.</dd>
-						
-							<dt>
-								<span class="light fixedFont">{object}</span>  <b>options</b>
-								
-							</dt>
-								<dd>This components options.</dd>
-						
-							<dt>
-								<span class="light fixedFont">{function}</span>  <b>ready</b>
-								
-							</dt>
-								<dd>Called when the player is ready.</dd>
-						
-						</dl>
 					
 					
 					
@@ -443,15 +394,37 @@ ul.inheritsList
 					Field Detail
 				</div>
 				
-					<a name="constructor"> </a>
+					<a name="queue"> </a>
 					<div class="fixedFont">
 					
 					
-					<b>constructor</b>
+					<b>queue</b>
 					
 					</div>
 					<div class="description">
-						Reset the constructor.
+						The queue of callbacks to call when this value is determined.
+						
+						
+					</div>
+					
+					
+
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="value"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>value</b>
+					
+					</div>
+					<div class="description">
+						The final value of this asynchronous variable.
 						
 						
 					</div>
@@ -473,15 +446,15 @@ ul.inheritsList
 					Method Detail
 				</div>
 				
-					<a name=".canPlay"> </a>
-					<div class="fixedFont">&lt;static&gt; 
+					<a name="get"> </a>
+					<div class="fixedFont">
 					
-					<span class="light">{boolean}</span>
-					<span class="light">minplayer.players.flash.</span><b>canPlay</b>(file)
+					
+					<b>get</b>(callback, pollValue)
 					
 					</div>
 					<div class="description">
-						
+						Retrieve the value of this variable.
 						
 						
 					</div>
@@ -493,10 +466,17 @@ ul.inheritsList
 							<dt class="heading">Parameters:</dt>
 							
 								<dt>
-									<b>file</b>
+									<span class="light fixedFont">{function}</span> <b>callback</b>
 									
 								</dt>
-								<dd></dd>
+								<dd>The function to call when the value is determined.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{function}</span> <b>pollValue</b>
+									
+								</dt>
+								<dd>The poll function to try and get the value every
+1 second if the value is not set.</dd>
 							
 							</dl>
 						
@@ -504,34 +484,20 @@ ul.inheritsList
 						
 						
 						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{boolean}</span> If this player can play this media type.</dd>
-							
-							</dl>
 						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd>minplayer.players.base#canPlay</dd>
-							
-							</dl>
 						
 
 					<hr />
 				
-					<a name=".getFlash"> </a>
-					<div class="fixedFont">&lt;static&gt; 
+					<a name="set"> </a>
+					<div class="fixedFont">
 					
-					<span class="light">{object}</span>
-					<span class="light">minplayer.players.flash.</span><b>getFlash</b>(params)
+					
+					<b>set</b>(val)
 					
 					</div>
 					<div class="description">
-						API to return the Flash player code provided params.
+						Sets the value of an asynchronous value.
 						
 						
 					</div>
@@ -543,10 +509,10 @@ ul.inheritsList
 							<dt class="heading">Parameters:</dt>
 							
 								<dt>
-									<span class="light fixedFont">{object}</span> <b>params</b>
+									<span class="light fixedFont">{void}</span> <b>val</b>
 									
 								</dt>
-								<dd>The params used to populate the Flash code.</dd>
+								<dd>The value to set.</dd>
 							
 							</dl>
 						
@@ -554,131 +520,7 @@ ul.inheritsList
 						
 						
 						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{object}</span> A Flash DOM element.</dd>
-							
-							</dl>
 						
-						
-						
-
-					<hr />
-				
-					<a name="getMedia"> </a>
-					<div class="fixedFont">
-					
-					<span class="light">{object}</span>
-					<b>getMedia</b>()
-					
-					</div>
-					<div class="description">
-						
-						
-						
-					</div>
-					
-					
-					
-						
-						
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{object}</span> The media player object.</dd>
-							
-							</dl>
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd><a href="../symbols/minplayer.players.base.html#getMedia">minplayer.players.base#getMedia</a></dd>
-							
-							</dl>
-						
-
-					<hr />
-				
-					<a name=".getPriority"> </a>
-					<div class="fixedFont">&lt;static&gt; 
-					
-					<span class="light">{number}</span>
-					<span class="light">minplayer.players.flash.</span><b>getPriority</b>()
-					
-					</div>
-					<div class="description">
-						
-						
-						
-					</div>
-					
-					
-					
-						
-						
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{number}</span> The priority of this media player.</dd>
-							
-							</dl>
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd>minplayer.players.base#getPriority</dd>
-							
-							</dl>
-						
-
-					<hr />
-				
-					<a name="playerFound"> </a>
-					<div class="fixedFont">
-					
-					<span class="light">{boolean}</span>
-					<b>playerFound</b>()
-					
-					</div>
-					<div class="description">
-						
-						
-						
-					</div>
-					
-					
-					
-						
-						
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{boolean}</span> TRUE - if the player is in the DOM, FALSE otherwise.</dd>
-							
-							</dl>
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd><a href="../symbols/minplayer.players.base.html#playerFound">minplayer.players.base#playerFound</a></dd>
-							
-							</dl>
 						
 
 					
@@ -695,7 +537,7 @@ ul.inheritsList
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Fri Feb 10 2012 02:13:36 GMT+0100 (CET)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Fri Feb 10 2012 02:13:35 GMT+0100 (CET)
 		</div>
 	</body>
 </html>

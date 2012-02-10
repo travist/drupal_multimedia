@@ -5,7 +5,7 @@
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 		<meta name="generator" content="JsDoc Toolkit" />
 		
-		<title>JsDoc Reference - minplayer.players.flash</title>
+		<title>JsDoc Reference - minplayer.image</title>
 
 		<style type="text/css">
 			/* default.css */
@@ -236,26 +236,24 @@ ul.inheritsList
 <!-- ============================== class title ============================ -->
 			<h1 class="classTitle">
 				
-				Class minplayer.players.flash
+				Class minplayer.image
 			</h1>
 
 <!-- ============================== class summary ========================== -->			
 			<p class="description">
 				
-				<br />Extends
-					<a href="../symbols/minplayer.display.html">minplayer.display</a>.<br />
 				
 			
-				The Flash media player class to control the flash fallback.
+				A class to easily handle images.
 				
 				
-					<br /><i>Defined in: </i> <a href="../symbols/src/src_minplayer.players.flash.js.html">minplayer.players.flash.js</a>.
+					<br /><i>Defined in: </i> <a href="../symbols/src/src_minplayer.image.js.html">minplayer.image.js</a>.
 				
 			</p>
 
 <!-- ============================== constructor summary ==================== -->			
 			
-			<table class="summaryTable" cellspacing="0" summary="A summary of the constructor documented in the class minplayer.players.flash.">
+			<table class="summaryTable" cellspacing="0" summary="A summary of the constructor documented in the class minplayer.image.">
 				<caption>Class Summary</caption>
 				<thead>
 					<tr>
@@ -268,7 +266,7 @@ ul.inheritsList
 						<td class="attributes">&nbsp;</td>
 						<td class="nameDescription" >
 							<div class="fixedFont">
-								<b><a href="../symbols/minplayer.players.flash.html#constructor">minplayer.players.flash</a></b>(context, options, ready)
+								<b><a href="../symbols/minplayer.image.html#constructor">minplayer.image</a></b>(context, options)
 							</div>
 							<div class="description"></div>
 						</td>
@@ -281,7 +279,7 @@ ul.inheritsList
 			
 				
 				
-				<table class="summaryTable" cellspacing="0" summary="A summary of the fields documented in the class minplayer.players.flash.">
+				<table class="summaryTable" cellspacing="0" summary="A summary of the fields documented in the class minplayer.image.">
 					<caption>Field Summary</caption>
 					<thead>
 						<tr>
@@ -295,7 +293,7 @@ ul.inheritsList
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
 								<div class="fixedFont">
-								<b><a href="../symbols/minplayer.players.flash.html#constructor">constructor</a></b>
+								<b><a href="../symbols/minplayer.image.html#constructor">constructor</a></b>
 								</div>
 								<div class="description">Reset the constructor.</div>
 							</td>
@@ -306,17 +304,13 @@ ul.inheritsList
 				
 				
 				
-				<dl class="inheritsList">
-				
-				</dl>
-				
 			
 
 <!-- ============================== methods summary ======================== -->
 			
 				
 				
-				<table class="summaryTable" cellspacing="0" summary="A summary of the methods documented in the class minplayer.players.flash.">
+				<table class="summaryTable" cellspacing="0" summary="A summary of the methods documented in the class minplayer.image.">
 					<caption>Method Summary</caption>
 					<thead>
 						<tr>
@@ -327,36 +321,18 @@ ul.inheritsList
 					<tbody>
 					
 						<tr>
-							<td class="attributes">&lt;static&gt; &nbsp;</td>
+							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont">minplayer.players.flash.<b><a href="../symbols/minplayer.players.flash.html#.canPlay">canPlay</a></b>(file)
+								<div class="fixedFont"><b><a href="../symbols/minplayer.image.html#clear">clear</a></b>(callback)
 								</div>
-								<div class="description"></div>
-							</td>
-						</tr>
-					
-						<tr>
-							<td class="attributes">&lt;static&gt; &nbsp;</td>
-							<td class="nameDescription">
-								<div class="fixedFont">minplayer.players.flash.<b><a href="../symbols/minplayer.players.flash.html#.getFlash">getFlash</a></b>(params)
-								</div>
-								<div class="description">API to return the Flash player code provided params.</div>
+								<div class="description">Clears an image.</div>
 							</td>
 						</tr>
 					
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.flash.html#getMedia">getMedia</a></b>()
-								</div>
-								<div class="description"></div>
-							</td>
-						</tr>
-					
-						<tr>
-							<td class="attributes">&lt;static&gt; &nbsp;</td>
-							<td class="nameDescription">
-								<div class="fixedFont">minplayer.players.flash.<b><a href="../symbols/minplayer.players.flash.html#.getPriority">getPriority</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.image.html#construct">construct</a></b>()
 								</div>
 								<div class="description"></div>
 							</td>
@@ -365,9 +341,27 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.flash.html#playerFound">playerFound</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.image.html#load">load</a></b>(src)
+								</div>
+								<div class="description">Loads an image.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.image.html#onResize">onResize</a></b>()
 								</div>
 								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.image.html#resize">resize</a></b>(width, height)
+								</div>
+								<div class="description">Resize the image provided a width and height or nothing.</div>
 							</td>
 						</tr>
 					
@@ -375,10 +369,6 @@ ul.inheritsList
 				</table>
 				
 				
-				
-				<dl class="inheritsList">
-				<dt>Methods borrowed from class <a href="../symbols/minplayer.display.html">minplayer.display</a>: </dt><dd><a href="../symbols/minplayer.display.html#bind">bind</a>, <a href="../symbols/minplayer.display.html#construct">construct</a>, <a href="../symbols/minplayer.display.html#getElements">getElements</a>, <a href="../symbols/minplayer.display.html#getScaledRect">getScaledRect</a>, <a href="../symbols/minplayer.display.html#isValid">isValid</a>, <a href="../symbols/minplayer.display.html#onResize">onResize</a>, <a href="../symbols/minplayer.display.html#trigger">trigger</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#addPlugin">addPlugin</a>, <a href="../symbols/minplayer.plugin.html#destroy">destroy</a>, <a href="../symbols/minplayer.plugin.html#eachPlugin">eachPlugin</a>, <a href="../symbols/minplayer.plugin.html#getPlugin">getPlugin</a>, <a href="../symbols/minplayer.plugin.html#loadPlugins">loadPlugins</a>, <a href="../symbols/minplayer.plugin.html#setPlayer">setPlayer</a></dd>
-				</dl>
 				
 			
 <!-- ============================== events summary ======================== -->
@@ -392,7 +382,7 @@ ul.inheritsList
 				</div>
 				
 				<div class="fixedFont">
-						<b>minplayer.players.flash</b>(context, options, ready)
+						<b>minplayer.image</b>(context, options)
 				</div>
 				
 				<div class="description">
@@ -418,12 +408,6 @@ ul.inheritsList
 								
 							</dt>
 								<dd>This components options.</dd>
-						
-							<dt>
-								<span class="light fixedFont">{function}</span>  <b>ready</b>
-								
-							</dt>
-								<dd>Called when the player is ready.</dd>
 						
 						</dl>
 					
@@ -473,15 +457,15 @@ ul.inheritsList
 					Method Detail
 				</div>
 				
-					<a name=".canPlay"> </a>
-					<div class="fixedFont">&lt;static&gt; 
+					<a name="clear"> </a>
+					<div class="fixedFont">
 					
-					<span class="light">{boolean}</span>
-					<span class="light">minplayer.players.flash.</span><b>canPlay</b>(file)
+					
+					<b>clear</b>(callback)
 					
 					</div>
 					<div class="description">
-						
+						Clears an image.
 						
 						
 					</div>
@@ -493,10 +477,10 @@ ul.inheritsList
 							<dt class="heading">Parameters:</dt>
 							
 								<dt>
-									<b>file</b>
+									<span class="light fixedFont">{function}</span> <b>callback</b>
 									
 								</dt>
-								<dd></dd>
+								<dd>Called when the image is done clearing.</dd>
 							
 							</dl>
 						
@@ -504,34 +488,52 @@ ul.inheritsList
 						
 						
 						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{boolean}</span> If this player can play this media type.</dd>
-							
-							</dl>
+						
+						
+
+					<hr />
+				
+					<a name="construct"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>construct</b>()
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
 						
 						
 						
 							<dl class="detailList">
 							<dt class="heading">See:</dt>
 							
-								<dd>minplayer.players.base#canPlay</dd>
+								<dd>minplayer.plugin.construct</dd>
 							
 							</dl>
 						
 
 					<hr />
 				
-					<a name=".getFlash"> </a>
-					<div class="fixedFont">&lt;static&gt; 
+					<a name="load"> </a>
+					<div class="fixedFont">
 					
-					<span class="light">{object}</span>
-					<span class="light">minplayer.players.flash.</span><b>getFlash</b>(params)
+					
+					<b>load</b>(src)
 					
 					</div>
 					<div class="description">
-						API to return the Flash player code provided params.
+						Loads an image.
 						
 						
 					</div>
@@ -543,34 +545,27 @@ ul.inheritsList
 							<dt class="heading">Parameters:</dt>
 							
 								<dt>
-									<span class="light fixedFont">{object}</span> <b>params</b>
+									<span class="light fixedFont">{string}</span> <b>src</b>
 									
 								</dt>
-								<dd>The params used to populate the Flash code.</dd>
+								<dd>The source of the image to load.</dd>
 							
 							</dl>
 						
 						
 						
 						
-						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{object}</span> A Flash DOM element.</dd>
-							
-							</dl>
 						
 						
 						
 
 					<hr />
 				
-					<a name="getMedia"> </a>
+					<a name="onResize"> </a>
 					<div class="fixedFont">
 					
-					<span class="light">{object}</span>
-					<b>getMedia</b>()
+					
+					<b>onResize</b>()
 					
 					</div>
 					<div class="description">
@@ -586,73 +581,27 @@ ul.inheritsList
 						
 						
 						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{object}</span> The media player object.</dd>
-							
-							</dl>
-						
 						
 						
 							<dl class="detailList">
 							<dt class="heading">See:</dt>
 							
-								<dd><a href="../symbols/minplayer.players.base.html#getMedia">minplayer.players.base#getMedia</a></dd>
+								<dd><a href="../symbols/minplayer.display.html#onResize">minplayer.display#onResize</a></dd>
 							
 							</dl>
 						
 
 					<hr />
 				
-					<a name=".getPriority"> </a>
-					<div class="fixedFont">&lt;static&gt; 
-					
-					<span class="light">{number}</span>
-					<span class="light">minplayer.players.flash.</span><b>getPriority</b>()
-					
-					</div>
-					<div class="description">
-						
-						
-						
-					</div>
-					
-					
-					
-						
-						
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{number}</span> The priority of this media player.</dd>
-							
-							</dl>
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd>minplayer.players.base#getPriority</dd>
-							
-							</dl>
-						
-
-					<hr />
-				
-					<a name="playerFound"> </a>
+					<a name="resize"> </a>
 					<div class="fixedFont">
 					
-					<span class="light">{boolean}</span>
-					<b>playerFound</b>()
+					
+					<b>resize</b>(width, height)
 					
 					</div>
 					<div class="description">
-						
+						Resize the image provided a width and height or nothing.
 						
 						
 					</div>
@@ -660,25 +609,28 @@ ul.inheritsList
 					
 					
 						
-						
-						
-						
-						
 							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
+							<dt class="heading">Parameters:</dt>
 							
-								<dd><span class="light fixedFont">{boolean}</span> TRUE - if the player is in the DOM, FALSE otherwise.</dd>
+								<dt>
+									<span class="light fixedFont">{integer}</span> <b>width</b>
+									
+								</dt>
+								<dd>(optional) The width of the container.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{integer}</span> <b>height</b>
+									
+								</dt>
+								<dd>(optional) The height of the container.</dd>
 							
 							</dl>
 						
 						
 						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd><a href="../symbols/minplayer.players.base.html#playerFound">minplayer.players.base#playerFound</a></dd>
-							
-							</dl>
+						
+						
+						
 						
 
 					

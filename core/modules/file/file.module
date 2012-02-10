@@ -153,8 +153,10 @@ function file_library_info() {
       'js' => array(
         $path . '/src/minplayer.compatibility.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.flags.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.async.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.plugin.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.display.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.image.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.player.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.file.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.playLoader.base.js' => array('group' => JS_LIBRARY),
@@ -163,6 +165,7 @@ function file_library_info() {
         $path . '/src/minplayer.players.flash.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.players.minplayer.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.players.youtube.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.players.vimeo.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.controllers.base.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.templates.base.js' => array('group' => JS_LIBRARY)
       ),
@@ -216,18 +219,45 @@ function file_media_player_info() {
 }
 
 /**
+ * Returns the player settings.
+ */
+function file_player_settings() {
+  return array(
+    "id" => 'player',
+    "controller" => 'default',
+    "template" => 'default',
+    "swfplayer" => '',
+    "wmode" => 'transparent',
+    "preload" => true,
+    "autoplay" => false,
+    "loop" => false,
+    "width" => '100%',
+    "height" => '400px',
+    "debug" => false,
+    "volume" => 80,
+    "files" => array(),
+    "file" => '',
+    "preview" => '',
+    "attributes" => array()
+  );
+}
+
+/**
  * Register a new media player in JavaScript.
  */
-function file_register_player($playerId, $settings, $attributes) {
+function file_register_player($settings, $attributes) {
+  $playerId = $settings['id'];
+  file_player_add_resources($settings['template'], $settings['debug']);
   $attributes = drupal_json_encode($attributes);
-  $settings = drupal_json_encode($settings);
+  $settings = array_intersect_key($settings, file_player_settings());
+  $settings = trim(drupal_json_encode($settings), '{}');
   $swfplayer = url(drupal_get_path('module', 'file') . '/player/flash/minplayer.swf');
   drupal_add_js("
     jQuery(function() {
       jQuery('#{$playerId}').minplayer({
         id:'#{$playerId}',
         attributes:{$attributes},
-        settings:{$settings},
+        {$settings},
         swfplayer:'{$swfplayer}'
       });
     });
@@ -238,28 +268,86 @@ function file_register_player($playerId, $settings, $attributes) {
  * Theme a media player.
  */
 function theme_media_player($variables) {
-  // Get the template.
-  $template = $variables['element']['#settings']['template'];
+
+  // Get the element for this player.
+  if (isset($variables['element'])) {
+    $element = &$variables['element'];
+  }
+  else {
+    $element &$variables;
+  }
+
+  // Get the settings.
+  $settings = $element['#settings'];
+  $attributes = $element['#attributes'];
+
+  // Check to make sure there are sources.
+  if (empty($element['#sources'])) {
+    return 'No media sources provided';
+  }
+
+  // Set the value.
+  $element['#value'] = '';
+
+  // Iterate through each of the sources and create a source for that file.
+  foreach ($element['#sources'] as $delta => $file) {
+
+    // Convert it to an array.
+    $file = (array)$file;
+
+    // Gets the source of this media.
+    if ($src = file_media_get_src($file)) {
+
+      // Get the source attributes.
+      $source_attributes = array('src' => $src);
+      if (isset($file['filemime'])) {
+        $source_attributes['type'] = $file['filemime'];
+      }
+
+      // Add the sources to the #value of the media tag.
+      $element['#value'] .= theme('html_tag', array(
+        'element' => array(
+          '#tag' => 'source',
+          '#attributes' => $source_attributes
+        )
+      ));
+    }
+  }
 
   // Add some variables that the template needs.
   $variables['player'] = theme('html_tag', $variables);
-  $variables['settings'] = $variables['element']['#settings'];
+  $variables['settings'] = $settings;
 
   // Register the media player in JavaScript.
-  file_register_player($variables['settings']['id'], $variables['element']['#settings'], $variables['element']['#attributes']);
+  file_register_player($settings, $attributes);
 
   // Return the theme for our media player.
-  return theme('media_player_' . $template, $variables);
+  return theme('media_player_' . $settings['template'], $variables);
 }
+
+/**
+ * Returns the source provided a field.
+ *
+ * @param type $field
+ */
+function file_media_get_src($field) {
+  if ($field) {
+    if (isset($field['uri'])) {
+      return file_create_url($field['uri']);
+    }
+    else if (isset($field['value'])) {
+      return $field['value'];
+    }
+  }
+  return '';
+}
+
 
 /**
  * Returns the settings for this video or audio element.
  */
-function file_player_get_attributes($item, $settings) {
+function file_player_get_attributes($settings) {
   $attributes = array();
-
-  $attributes['src'] = file_create_url($item['uri']);
-
   $element_settings = array('preload', 'autoplay', 'loop');
   foreach ($settings as $name => $value) {
     if ($value && in_array($name, $element_settings)) {
@@ -267,10 +355,10 @@ function file_player_get_attributes($item, $settings) {
     }
   }
 
+  // Set the ID, width and height.
   $attributes['id'] = $settings['id'] . '-player';
   $attributes['width'] = '100%';
   $attributes['height'] = '100%';
-
   return $attributes;
 }
 

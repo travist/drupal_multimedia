@@ -22,13 +22,13 @@ minplayer.templates["default"].prototype.getElements = function() {
   return jQuery.extend(elements, {
     player:this.display,
     display:jQuery(".media-player-display", this.display),
-    media:jQuery(this.options.id + "-player", this.display)
+    media:jQuery("#" + this.options.id + "-player", this.display),
+    error:jQuery('.media-player-error', this.display)
   });
 };
 
 // Add this to the minplayer.plugins array.
 minplayer.plugins = minplayer.plugins || [];
 minplayer.plugins.push({
-  id:"default_template",
   object:minplayer.templates["default"]
 });

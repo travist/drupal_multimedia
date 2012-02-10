@@ -1,4 +1,5 @@
 <div id="<?php print $settings['id']; ?>" class="media-player smalldark" style="width:<?php print $settings['width']; ?>; height:<?php print $settings['height']; ?>;">
+  <div class="media-player-error"></div>
   <div class="media-player-controls" style="display: block; ">
     <div class="media-player-controls-left">
       <a class="media-player-play" title="Play"></a>
@@ -15,12 +16,15 @@
       </div>
     </div>
     <div class="media-player-controls-mid">
-      <div class="media-player-seek"></div>
+      <div class="media-player-seek">
+        <div class="media-player-progress"></div>
+      </div>
     </div>
   </div>
   <div class="media-player-play-loader">
     <div class="media-player-big-play"><span></span></div>
     <div class="media-player-loader">&nbsp;</div>
+    <div class="media-player-preview"></div>
   </div>
   <div class="media-player-display">
     <?php print $player; ?>

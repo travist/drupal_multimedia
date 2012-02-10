@@ -84,6 +84,67 @@ var minplayer = minplayer || {};
 
 /**
  * @constructor
+ * @class This class keeps track of asynchronous get requests for certain
+ * variables within the player.
+ */
+minplayer.async = function() {
+
+  /** The final value of this asynchronous variable. */
+  this.value = null;
+
+  /** The queue of callbacks to call when this value is determined. */
+  this.queue = [];
+};
+
+/**
+ * Retrieve the value of this variable.
+ *
+ * @param {function} callback The function to call when the value is determined.
+ * @param {function} pollValue The poll function to try and get the value every
+ * 1 second if the value is not set.
+ */
+minplayer.async.prototype.get = function(callback, pollValue) {
+
+  // If the value is set, then immediately call the callback, otherwise, just
+  // add it to the queue when the variable is set.
+  if (this.value !== null) {
+    callback(this.value);
+  }
+  else {
+
+    // Add this callback to the queue.
+    this.queue.push(callback);
+  }
+};
+
+/**
+ * Sets the value of an asynchronous value.
+ *
+ * @param {void} val The value to set.
+ */
+minplayer.async.prototype.set = function(val) {
+
+  // Set the value.
+  this.value = val;
+
+  // Get the callback queue length.
+  var i = this.queue.length;
+
+  // Iterate through all the callbacks and call them.
+  if (i) {
+    while (i--) {
+      this.queue[i](val);
+    }
+
+    // Reset the queue.
+    this.queue = [];
+  }
+};
+/** The minplayer namespace. */
+var minplayer = minplayer || {};
+
+/**
+ * @constructor
  * @class This is a class used to keep track of flag states
  * which is used to control the busy cursor, big play button, among other
  * items in which multiple components can have an interest in hiding or
@@ -171,6 +232,9 @@ minplayer.plugin = function(context, options) {
   }
 };
 
+/** Static array to keep track of plugin instances. */
+minplayer.plugin.instances = {};
+
 /**
  * The constructor which is called once the context is set.
  * Any class deriving from the plugin class should place all context
@@ -179,6 +243,96 @@ minplayer.plugin = function(context, options) {
  * as object creation.
  */
 minplayer.plugin.prototype.construct = function() {
+
+  // If this is a player, then it needs a new plugin
+  if (this.options.name == 'player') {
+    this.loadPlugins();
+    this.options.name = 'player';
+  }
+
+  // Add this plugin.
+  this.addPlugin(this.options.name, this);
+};
+
+/**
+ * Destructor.
+ */
+minplayer.plugin.prototype.destroy = function() {
+  // Remove the pointer to the plugins array so it will be garbage collected.
+  if (minplayer.plugin.instances[this.options.id][this.options.name]) {
+    minplayer.plugin.instances[this.options.id][this.options.name] = null;
+  }
+};
+
+/**
+ * Adds a new plugin to this player.
+ *
+ * @param {string} name The name of this plugin.
+ * @param {object} plugin A new plugin object, derived from media.plugin.
+ */
+minplayer.plugin.prototype.addPlugin = function(name, plugin) {
+
+  // Only continue if the plugin exists.
+  if (plugin.isValid()) {
+
+    // Add this to the plugins.
+    minplayer.plugin.instances[this.options.id][name] = plugin;
+  }
+};
+
+/**
+ * Gets a plugin by name.
+ *
+ * @param {string} name The name of the plugin.
+ * @return {object} The plugin for the provided name.
+ */
+minplayer.plugin.prototype.getPlugin = function(name) {
+  if (minplayer.plugin.instances[this.options.id][name]) {
+    return minplayer.plugin.instances[this.options.id][name];
+  }
+  return null;
+};
+
+/**
+ * Loads all of the available plugins.
+ */
+minplayer.plugin.prototype.loadPlugins = function() {
+  var plugin = null;
+  var pluginInfo = {};
+  var pluginContext = null;
+
+  // Initialize this plugins array.
+  minplayer.plugin.instances[this.options.id] = {};
+
+  // Iterate through all the plugins.
+  var i = minplayer.plugins.length;
+  while (i--) {
+
+    // Get the plugin information.
+    pluginInfo = minplayer.plugins[i];
+    if (pluginInfo.element) {
+      pluginContext = jQuery(pluginInfo.element, this.display);
+    }
+    else {
+      pluginContext = this.display;
+    }
+
+    // Create the new plugin.
+    plugin = new pluginInfo.object(pluginContext, this.options);
+  }
+};
+
+/**
+ * Iterate over each plugin.
+ *
+ * @param {function} callback Called for each plugin in this player.
+ */
+minplayer.plugin.prototype.eachPlugin = function(callback) {
+  for (var name in minplayer.plugin.instances[this.options.id]) {
+    if (minplayer.plugin.instances[this.options.id].hasOwnProperty(name)) {
+      callback.call(this, minplayer.plugin.instances[this.options.id][name]);
+    }
+  }
 };
 
 /**
@@ -204,6 +358,9 @@ minplayer = minplayer || {};
  */
 minplayer.display = function(context, options) {
 
+  // See if we allow resize on this display.
+  this.allowResize = false;
+
   if (context) {
 
     // Set the display and options.
@@ -227,6 +384,91 @@ minplayer.display.prototype = new minplayer.plugin();
 minplayer.display.prototype.constructor = minplayer.display;
 
 /**
+ * @see minplayer.plugin.construct
+ */
+minplayer.display.prototype.construct = function() {
+
+  // Call the plugin constructor.
+  minplayer.plugin.prototype.construct.call(this);
+
+  // Only do this if they allow resize for this display.
+  if (this.allowResize) {
+
+    // Set the resize timeout and this pointer.
+    var resizeTimeout = 0;
+    var _this = this;
+
+    // Add a handler to trigger a resize event.
+    jQuery(window).resize(function() {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(function() {
+        _this.onResize();
+      }, 200);
+    });
+  }
+};
+
+/**
+ * Called when the window resizes.
+ */
+minplayer.display.prototype.onResize = function() {
+};
+
+
+/**
+ * Trigger a media event.
+ *
+ * @param {string} type The event type.
+ * @param {object} data The event data object.
+ * @return {object} The jQuery prototype.
+ */
+minplayer.display.prototype.trigger = function(type, data) {
+  return this.display.trigger(type, data);
+};
+
+/**
+ * Bind to a media event.
+ *
+ * @param {string} types The event type.
+ * @param {object} data The data to bind with the event.
+ * @param {function} fn The callback function.
+ * @return {object} The jQuery prototype.
+ **/
+minplayer.display.prototype.bind = function(types, data, fn) {
+
+  // We will always unbind first for media events.
+  return this.display.unbind(types, fn).bind(types, data, fn);
+};
+
+/**
+ * Returns a scaled rectangle provided a ratio and the container rect.
+ *
+ * @param {number} ratio The width/height ratio of what is being scaled.
+ * @param {object} rect The bounding rectangle for scaling.
+ * @return {object} The Rectangle object of the scaled rectangle.
+ */
+minplayer.display.prototype.getScaledRect = function(ratio, rect) {
+  var scaledRect = {};
+  scaledRect.x = rect.x ? rect.x : 0;
+  scaledRect.y = rect.y ? rect.y : 0;
+  scaledRect.width = rect.width ? rect.width : 0;
+  scaledRect.height = rect.height ? rect.height : 0;
+  if (ratio) {
+    if ((rect.width / rect.height) > ratio) {
+      scaledRect.height = rect.height;
+      scaledRect.width = Math.floor(rect.height * ratio);
+    }
+    else {
+      scaledRect.height = Math.floor(rect.width / ratio);
+      scaledRect.width = rect.width;
+    }
+    scaledRect.x = Math.floor((rect.width - scaledRect.width) / 2);
+    scaledRect.y = Math.floor((rect.height - scaledRect.height) / 2);
+  }
+  return scaledRect;
+};
+
+/**
  * Returns all the jQuery elements that this component uses.
  *
  * @return {object} An object which defines all the jQuery elements that
@@ -247,6 +489,145 @@ minplayer.display.prototype.isValid = function() {
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
 
+/**
+ * @constructor
+ * @class A class to easily handle images.
+ * @param {object} context The jQuery context.
+ * @param {object} options This components options.
+ */
+minplayer.image = function(context, options) {
+
+  // Determine if the image is loaded.
+  this.loaded = false;
+
+  // The image loader.
+  this.loader = null;
+
+  // The ratio of the image.
+  this.ratio = 0;
+
+  // The image element.
+  this.image = null;
+
+  // Derive from display
+  minplayer.display.call(this, context, options);
+};
+
+/** Derive from minplayer.display. */
+minplayer.image.prototype = new minplayer.display();
+
+/** Reset the constructor. */
+minplayer.image.prototype.constructor = minplayer.image;
+
+/**
+ * @see minplayer.plugin.construct
+ */
+minplayer.image.prototype.construct = function() {
+
+  // Set the name of this plugin.
+  this.options.name = 'image';
+
+  // Say we need to resize.
+  this.allowResize = true;
+
+  // Call the media display constructor.
+  minplayer.display.prototype.construct.call(this);
+
+  // Set the container to not show any overflow...
+  this.display.css('overflow', 'hidden');
+
+  // Create the image loader.
+  var _this = this;
+  this.loader = new Image();
+  this.loader.onload = function() {
+    _this.loaded = true;
+    _this.ratio = (_this.loader.width / _this.loader.height);
+    _this.resize();
+    _this.trigger('loaded');
+  };
+};
+
+/**
+ * Loads an image.
+ *
+ * @param {string} src The source of the image to load.
+ */
+minplayer.image.prototype.load = function(src) {
+
+  // First clear the previous image.
+  this.clear(function() {
+
+    // Create the new image, and append to the display.
+    this.image = jQuery(document.createElement('img')).attr({src: ''}).hide();
+    this.display.append(this.image);
+    this.loader.src = src;
+  });
+};
+
+/**
+ * Clears an image.
+ *
+ * @param {function} callback Called when the image is done clearing.
+ */
+minplayer.image.prototype.clear = function(callback) {
+  this.loaded = false;
+  if (this.image) {
+    var _this = this;
+    this.image.fadeOut(function() {
+      _this.image.attr('src', '');
+      _this.loader.src = '';
+      $(this).remove();
+      callback.call(_this);
+    });
+  }
+  else {
+    callback.call(this);
+  }
+};
+
+/**
+ * Resize the image provided a width and height or nothing.
+ *
+ * @param {integer} width (optional) The width of the container.
+ * @param {integer} height (optional) The height of the container.
+ */
+minplayer.image.prototype.resize = function(width, height) {
+  width = width || this.display.width();
+  height = height || this.display.height();
+  if (width && height && this.loaded) {
+
+    // Get the scaled rectangle.
+    var rect = this.getScaledRect(this.ratio, {
+      width: width,
+      height: height
+    });
+
+    // Now set this image to the new size.
+    if (this.image) {
+      this.image.attr('src', this.loader.src).css({
+        marginLeft: rect.x,
+        marginTop: rect.y,
+        width: rect.width,
+        height: rect.height
+      });
+    }
+
+    // Show the container.
+    this.image.fadeIn();
+  }
+};
+
+/**
+ * @see minplayer.display#onResize
+ */
+minplayer.image.prototype.onResize = function() {
+
+  // Resize the image to fit.
+  this.resize();
+};
+/** The minplayer namespace. */
+var minplayer = minplayer || {};
+
 // Add a way to instanciate using jQuery prototype.
 if (!jQuery.fn.minplayer) {
 
@@ -260,7 +641,7 @@ if (!jQuery.fn.minplayer) {
    */
   jQuery.fn.minplayer = function(options) {
     return jQuery(this).each(function() {
-      if (!minplayer.player[jQuery(this).selector]) {
+      if (!minplayer.plugin.instances[options.id]) {
         new minplayer.player(jQuery(this), options);
       }
     });
@@ -294,15 +675,20 @@ minplayer.player = function(context, options) {
     id: 'player',
     controller: 'default',
     template: 'default',
-    volume: 80,
     swfplayer: '',
     wmode: 'transparent',
-    attributes: {},
-    settings: {}
+    preload: true,
+    autoplay: false,
+    loop: false,
+    width: '100%',
+    height: '350px',
+    debug: false,
+    volume: 80,
+    files: [],
+    file: '',
+    preview: '',
+    attributes: {}
   }, options);
-
-  // Store this player instance.
-  minplayer.player[options.id] = this;
 
   // Derive from display
   minplayer.display.call(this, context, options);
@@ -319,14 +705,11 @@ minplayer.player.prototype.constructor = minplayer.player;
  */
 minplayer.player.prototype.construct = function() {
 
+  // Set the name of this plugin.
+  this.options.name = 'player';
+
   // Call the minplayer display constructor.
   minplayer.display.prototype.construct.call(this);
-
-  /** The current player. */
-  this.media = null;
-
-  /** All of the plugin objects. */
-  this.allPlugins = {};
 
   /** Variable to store the current media player. */
   this.currentPlayer = 'html5';
@@ -334,11 +717,27 @@ minplayer.player.prototype.construct = function() {
   // Add key events to the window.
   this.addKeyEvents();
 
-  // Load all the plugins.
-  this.loadPlugins();
-
   // Now load these files.
   this.load(this.getFiles());
+};
+
+/**
+ * Sets an error on the player.
+ *
+ * @param {string} error The error to display on the player.
+ */
+minplayer.player.prototype.error = function(error) {
+  if (this.elements.error) {
+
+    // Set the error text.
+    this.elements.error.text(error);
+    if (error) {
+      this.elements.error.show();
+    }
+    else {
+      this.elements.error.hide();
+    }
+  }
 };
 
 /**
@@ -354,27 +753,6 @@ minplayer.player.prototype.addKeyEvents = function() {
       event.data.obj.display.removeClass('fullscreen');
     }
   });
-};
-
-/**
- * Loads all of the available plugins.
- */
-minplayer.player.prototype.loadPlugins = function() {
-  var plugin = null;
-  var pluginInfo = {};
-  var pluginContext = null;
-  var i = minplayer.plugins.length;
-  while (i--) {
-    pluginInfo = minplayer.plugins[i];
-    if (pluginInfo.element) {
-      pluginContext = jQuery(pluginInfo.element, this.display);
-    }
-    else {
-      pluginContext = this.display;
-    }
-    plugin = new pluginInfo.object(pluginContext, this.options);
-    this.addPlugin(pluginInfo.id, plugin);
-  }
 };
 
 /**
@@ -410,10 +788,18 @@ minplayer.player.prototype.getFiles = function() {
  * @return {object} The best media file to play in the current browser.
  */
 minplayer.player.prototype.getMediaFile = function(files) {
+
+  // If there are no files then return null.
+  if (!files) {
+    return null;
+  }
+
+  // If the file is a single string, then return the file object.
   if (typeof files === 'string') {
     return new minplayer.file({'path': files});
   }
 
+  // If the file is already a file object then just return.
   if (files.path) {
     return new minplayer.file(files);
   }
@@ -437,7 +823,7 @@ minplayer.player.prototype.getMediaFile = function(files) {
     }
   }
 
-  // Return the minplayer file.
+  // Return the best minplayer file.
   return mFile;
 };
 
@@ -448,70 +834,96 @@ minplayer.player.prototype.getMediaFile = function(files) {
  */
 minplayer.player.prototype.load = function(files) {
 
-  // Get the best media file.
-  var mFile = this.getMediaFile(files), id = '', pClass = '';
+  // Set the id and class.
+  var id = '', pClass = '';
 
-  // Only do something if we have a valid file.
-  if (mFile) {
+  // If no file was provided, then get it.
+  this.options.files = files || this.options.files;
+  this.options.file = this.getMediaFile(this.options.files);
 
-    // Only destroy if the current player is different than the new player.
-    if (!this.media || (mFile.player.toString() !== this.currentPlayer)) {
+  // Do nothing if there isn't a file.
+  if (!this.options.file) {
+    this.error('No media found.');
+    return;
+  }
 
-      // Set the current media player.
-      this.currentPlayer = mFile.player.toString();
+  if (!this.options.file.player) {
+    this.error('Cannot play media: ' + this.options.file.mimetype);
+    return;
+  }
 
-      // Make sure the player has an option to cleanup.
-      if (this.media) {
-        this.media.destroy();
-      }
+  // Reset the error.
+  this.error();
 
-      // Create a new media player for this file.
-      if (this.elements.display) {
-        pClass = minplayer.players[mFile.player];
-        this.media = new pClass(this.elements.display, this.options, mFile);
-      }
+  // Only destroy if the current player is different than the new player.
+  var player = this.options.file.player.toString();
 
-      // Iterate through all plugins and add the player to them.
-      for (id in this.allPlugins) {
-        if (this.allPlugins.hasOwnProperty(id)) {
-          this.allPlugins[id].setPlayer(this.media);
-        }
-      }
+  // If there isn't media or if the players are different.
+  if (!this.player || (player !== this.currentPlayer)) {
+
+    // Set the current media player.
+    this.currentPlayer = player;
+
+    // The display for this media player.
+    var display = this.elements.display;
+
+    // Do nothing if we don't have a display.
+    if (!display) {
+      this.error('No media display found.');
+      return;
     }
 
-    // If the media exists, then load it.
-    if (this.media) {
+    // If the media exists, then destroy it.
+    if (this.player) {
+      this.player.destory();
+    }
+
+    // Get the class name and create the new player.
+    pClass = minplayer.players[this.options.file.player];
+
+    // Create the new media player.
+    var _this = this;
+    this.player = new pClass(display, this.options, function(player) {
+
+      // Iterate through each plugin.
+      _this.eachPlugin(function(plugin) {
+
+        // Set the player.
+        plugin.setPlayer(player);
+
+        // Bind to the error event.
+        plugin.bind('error', function(event, data) {
+          _this.error(data);
+        });
+
+        // Bind to the fullscreen event.
+        plugin.bind('fullscreen', function(event, data) {
+          _this.resize();
+        });
+      });
 
       // Now load this media.
-      this.media.load(mFile);
-    }
+      player.load();
+    });
+  }
+
+  // If the media object already exists...
+  else if (this.player) {
+
+    // Now load the different media file.
+    this.player.load(this.options.file);
   }
 };
 
 /**
- * Add a new plugin to the media player.
- *
- * @param {string} id The plugin ID.
- * @param {object} plugin A new plugin object, derived from media.plugin.
+ * Called when the player is resized.
  */
-minplayer.player.prototype.addPlugin = function(id, plugin) {
+minplayer.player.prototype.resize = function() {
 
-  // Only continue if the plugin exists.
-  if (plugin.isValid()) {
-
-    // Add to plugins.
-    this.allPlugins[id] = plugin;
-  }
-};
-
-/**
- * Returns a plugin provided a plugin ID.
- *
- * @param {string} id The plugin ID to retrieve.
- * @return {object} The plugin matching the provided ID.
- */
-minplayer.player.prototype.getPlugin = function(id) {
-  return this.allPlugins[id];
+  // Call onRezie for each plugin.
+  this.eachPlugin(function(plugin) {
+    plugin.onResize();
+  });
 };
 
 /**
@@ -519,8 +931,8 @@ minplayer.player.prototype.getPlugin = function(id) {
  * media file into the media player.
  */
 minplayer.player.prototype.play = function() {
-  if (this.media) {
-    this.media.play();
+  if (this.player) {
+    this.player.play();
   }
 };
 
@@ -528,8 +940,8 @@ minplayer.player.prototype.play = function() {
  * Pause the media.
  */
 minplayer.player.prototype.pause = function() {
-  if (this.media) {
-    this.media.pause();
+  if (this.player) {
+    this.player.pause();
   }
 };
 
@@ -537,8 +949,8 @@ minplayer.player.prototype.pause = function() {
  * Stop the media.
  */
 minplayer.player.prototype.stop = function() {
-  if (this.media) {
-    this.media.stop();
+  if (this.player) {
+    this.player.stop();
   }
 };
 
@@ -548,8 +960,8 @@ minplayer.player.prototype.stop = function() {
  * @param {number} pos The position to seek.  0 to 1.
  */
 minplayer.player.prototype.seek = function(pos) {
-  if (this.media) {
-    this.media.seek(pos);
+  if (this.player) {
+    this.player.seek(pos);
   }
 };
 
@@ -559,27 +971,31 @@ minplayer.player.prototype.seek = function(pos) {
  * @param {number} vol The volume to set.  0 to 1.
  */
 minplayer.player.prototype.setVolume = function(vol) {
-  if (this.media) {
-    this.media.setVolume(vol);
+  if (this.player) {
+    this.player.setVolume(vol);
   }
 };
 
 /**
  * Get the current volume setting.
  *
+ * @param {function} callback The callback that is called when the volume
+ * is known.
  * @return {number} The current volume level. 0 to 1.
  */
-minplayer.player.prototype.getVolume = function() {
-  return this.media ? this.media.getVolume() : 0;
+minplayer.player.prototype.getVolume = function(callback) {
+  return this.player ? this.player.getVolume(callback) : 0;
 };
 
 /**
  * Get the current media duration.
  *
+ * @param {function} callback The callback that is called when the duration
+ * is known.
  * @return {number} The current media duration.
  */
-minplayer.player.prototype.getDuration = function() {
-  return this.media ? this.media.getDuration() : 0;
+minplayer.player.prototype.getDuration = function(callback) {
+  return this.player ? this.player.getDuration(callback) : 0;
 };
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
@@ -601,10 +1017,19 @@ minplayer.file = function(file) {
 
   // These should be provided, but just in case...
   this.extension = file.extension || this.getFileExtension();
-  this.mimetype = file.mimetype || this.getMimeType();
+  this.mimetype = file.mimetype || file.filemime || this.getMimeType();
   this.type = file.type || this.getType();
+
+  // Fail safe to try and guess the mimetype and media type.
+  if (!this.type) {
+    this.mimetype = this.getMimeType();
+    this.type = this.getType();
+  }
+
+  // Get the player.
   this.player = file.player || this.getBestPlayer();
   this.priority = file.priority || this.getPriority();
+  this.id = file.id || this.getId();
 };
 
 /**
@@ -719,8 +1144,18 @@ minplayer.file.prototype.getType = function() {
     case 'audio/ogg':
       return 'audio';
     default:
-      return 'unknown';
+      return '';
   }
+};
+
+/**
+ * Returns the ID for this media file.
+ *
+ * @return {string} The id for this media file which is provided by the player.
+ */
+minplayer.file.prototype.getId = function() {
+  var player = minplayer.players[this.player];
+  return (player && player.getMediaId) ? player.getMediaId(this) : '';
 };
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
@@ -746,6 +1181,9 @@ minplayer.playLoader.base = function(context, options) {
   // Define the flags that control the big play button.
   this.bigPlay = new minplayer.flags();
 
+  // The preview image.
+  this.preview = null;
+
   // Derive from display
   minplayer.display.call(this, context, options);
 };
@@ -757,22 +1195,44 @@ minplayer.playLoader.base.prototype = new minplayer.display();
 minplayer.playLoader.base.prototype.constructor = minplayer.playLoader.base;
 
 /**
- * @see minplayer.plugin#construct
+ * The constructor.
  */
 minplayer.playLoader.base.prototype.construct = function() {
 
-  // Call the minplayer plugin constructor.
+  // Set the name of this plugin.
+  this.options.name = 'playLoader';
+
+  // Call the media display constructor.
   minplayer.display.prototype.construct.call(this);
 
-  // Trigger a play event when someone clicks on the controller.
-  if (this.elements.bigPlay) {
-    this.elements.bigPlay.bind('click', {obj: this}, function(event) {
-      event.preventDefault();
-      jQuery(this).hide();
-      if (event.data.obj.player) {
-        event.data.obj.player.play();
-      }
-    });
+  // Add the preview to the options.
+  if (this.elements.preview) {
+
+    // Get the poster image.
+    if (!this.options.preview) {
+      this.options.preview = this.elements.media.attr('poster');
+    }
+
+    // Reset the media's poster image.
+    this.elements.media.attr('poster', '');
+
+    // If there is a preview to show...
+    if (this.options.preview) {
+
+      // Say that this has a preview.
+      this.elements.preview.addClass('has-preview').show();
+
+      // Create a new preview image.
+      this.preview = new minplayer.image(this.elements.preview, this.options);
+
+      // Create the image.
+      this.preview.load(this.options.preview);
+    }
+    else {
+
+      // Hide the preview.
+      this.elements.preview.hide();
+    }
   }
 };
 
@@ -814,33 +1274,66 @@ minplayer.playLoader.base.prototype.checkVisibility = function() {
  */
 minplayer.playLoader.base.prototype.setPlayer = function(player) {
   minplayer.display.prototype.setPlayer.call(this, player);
-  var _this = this;
-  player.display.bind('loadstart', function(event) {
-    _this.busy.setFlag('media', true);
-    _this.bigPlay.setFlag('media', true);
-    _this.checkVisibility();
-  });
-  player.display.bind('waiting', function(event) {
-    _this.busy.setFlag('media', true);
-    _this.checkVisibility();
-  });
-  player.display.bind('loadedmetadata', function(event) {
-    _this.busy.setFlag('media', false);
-    _this.checkVisibility();
-  });
-  player.display.bind('loadeddata', function(event) {
-    _this.busy.setFlag('media', false);
-    _this.checkVisibility();
-  });
-  player.display.bind('playing', function(event) {
-    _this.busy.setFlag('media', false);
-    _this.bigPlay.setFlag('media', false);
-    _this.checkVisibility();
-  });
-  player.display.bind('pause', function(event) {
-    _this.bigPlay.setFlag('media', true);
-    _this.checkVisibility();
-  });
+
+  // Only bind if this player does not have its own play loader.
+  if (!player.hasPlayLoader()) {
+
+    // Trigger a play event when someone clicks on the controller.
+    if (this.elements.bigPlay) {
+      this.elements.bigPlay.unbind();
+      this.elements.bigPlay.bind('click', {player: player}, function(event) {
+        event.preventDefault();
+        jQuery(this).hide();
+        event.data.player.play();
+      });
+    }
+
+    // Bind to the player events to control the play loader.
+    player.bind('loadstart', {obj: this}, function(event) {
+      event.data.obj.busy.setFlag('media', true);
+      event.data.obj.bigPlay.setFlag('media', true);
+      if (event.data.obj.preview) {
+        event.data.obj.elements.preview.show();
+      }
+      event.data.obj.checkVisibility();
+    });
+    player.bind('waiting', {obj: this}, function(event) {
+      event.data.obj.busy.setFlag('media', true);
+      event.data.obj.checkVisibility();
+    });
+    player.bind('loadeddata', {obj: this}, function(event) {
+      event.data.obj.busy.setFlag('media', false);
+      event.data.obj.checkVisibility();
+    });
+    player.bind('playing', {obj: this}, function(event) {
+      event.data.obj.busy.setFlag('media', false);
+      event.data.obj.bigPlay.setFlag('media', false);
+      if (event.data.obj.preview) {
+        event.data.obj.elements.preview.hide();
+      }
+      event.data.obj.checkVisibility();
+    });
+    player.bind('pause', {obj: this}, function(event) {
+      event.data.obj.bigPlay.setFlag('media', true);
+      event.data.obj.checkVisibility();
+    });
+  }
+  else {
+
+    // Hide the busy cursor.
+    if (this.elements.busy) {
+      this.elements.busy.hide();
+    }
+
+    // Hide the big play button.
+    if (this.elements.bigPlay) {
+      this.elements.bigPlay.unbind();
+      this.elements.bigPlay.hide();
+    }
+
+    // Hide the display.
+    this.display.hide();
+  }
 };
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
@@ -855,12 +1348,12 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {object} mediaFile The media file for this player.
+ * @param {function} ready The callback function when the player is ready.
  */
-minplayer.players.base = function(context, options, mediaFile) {
+minplayer.players.base = function(context, options, ready) {
 
-  /** The currently loaded media file. */
-  this.mediaFile = mediaFile;
+  /** The ready pointer to be called when the player is ready. */
+  this.readyCallback = ready;
 
   // Derive from display
   minplayer.display.call(this, context, options);
@@ -882,6 +1375,16 @@ minplayer.players.base.getPriority = function() {
 };
 
 /**
+ * Returns the ID for the media being played.
+ *
+ * @param {object} file A {@link minplayer.file} object.
+ * @return {string} The ID for the provided media.
+ */
+minplayer.players.base.getMediaId = function(file) {
+  return '';
+};
+
+/**
  * Determine if we can play the media file.
  *
  * @param {object} file A {@link minplayer.file} object.
@@ -897,8 +1400,17 @@ minplayer.players.base.canPlay = function(file) {
  */
 minplayer.players.base.prototype.construct = function() {
 
+  // Set the name of this plugin.
+  this.options.name = 'media';
+
   // Call the media display constructor.
   minplayer.display.prototype.construct.call(this);
+
+  // Reset the variables to initial state.
+  this.reset();
+
+  /** The currently loaded media file. */
+  this.mediaFile = this.options.file;
 
   // Get the player display object.
   if (!this.playerFound()) {
@@ -916,20 +1428,198 @@ minplayer.players.base.prototype.construct = function() {
   }
 
   // Get the player object...
-  this.player = this.getPlayer();
+  this.media = this.getMedia();
+};
 
-  /**
-   * Trigger a media event.
-   * @this media.players.base.
-   * @param {string} type The event type.
-   * @param {object} data The event data object.
-   */
-  this.trigger = function(type, data) {
-    this.display.trigger(type, data);
-  };
+/**
+ * Clears all the intervals.
+ */
+minplayer.players.base.prototype.clearIntervals = function() {
+  // Stop the intervals.
+  if (this.playInterval) {
+    clearInterval(this.playInterval);
+  }
 
-  this.duration = 0;
-  this.currentTime = 0;
+  if (this.progressInterval) {
+    clearInterval(this.progressInterval);
+  }
+};
+
+/**
+ * Resets all variables.
+ */
+minplayer.players.base.prototype.reset = function() {
+
+  // Reset the ready flag.
+  this.ready = false;
+
+  // The duration of the player.
+  this.duration = new minplayer.async();
+
+  // The current play time of the player.
+  this.currentTime = new minplayer.async();
+
+  // The amount of bytes loaded in the player.
+  this.bytesLoaded = new minplayer.async();
+
+  // The total amount of bytes for the media.
+  this.bytesTotal = new minplayer.async();
+
+  // The bytes that the download started with.
+  this.bytesStart = new minplayer.async();
+
+  // The current volume of the player.
+  this.volume = new minplayer.async();
+
+  // Stop the intervals.
+  this.clearIntervals();
+
+  // Set the intervals to zero.
+  this.playInterval = 0;
+  this.progressInterval = 0;
+};
+
+/**
+ * Called when the player is ready to recieve events and commands.
+ */
+minplayer.players.base.prototype.onReady = function() {
+  // Store the this pointer.
+  var _this = this;
+
+  // Set the ready flag.
+  this.ready = true;
+
+  // Set the volume to the default.
+  this.setVolume(this.options.volume / 100);
+
+  // Create a progress interval to keep track of the bytes loaded.
+  this.progressInterval = setInterval(function() {
+
+    // Get the bytes loaded asynchronously.
+    _this.getBytesLoaded(function(bytesLoaded) {
+
+      // Get the bytes total asynchronously.
+      _this.getBytesTotal(function(bytesTotal) {
+
+        // Trigger an event about the progress.
+        if (bytesLoaded || bytesTotal) {
+
+          // Get the bytes start, but don't require it.
+          var bytesStart = 0;
+          _this.getBytesStart(function(val) {
+            bytesStart = val;
+          });
+
+          // Trigger a progress event.
+          _this.trigger('progress', {
+            loaded: bytesLoaded,
+            total: bytesTotal,
+            start: bytesStart
+          });
+        }
+      });
+
+    });
+  }, 1000);
+
+  // Call the callback to let this person know we are ready.
+  if (this.readyCallback) {
+    this.readyCallback(this);
+  }
+
+  // Trigger that the load has started.
+  this.trigger('loadstart');
+};
+
+/**
+ * Should be called when the media is playing.
+ */
+minplayer.players.base.prototype.onPlaying = function() {
+  // Store the this pointer.
+  var _this = this;
+
+  // Trigger an event that we are playing.
+  this.trigger('playing');
+
+  // Create a progress interval to keep track of the bytes loaded.
+  this.playInterval = setInterval(function() {
+
+    // Get the current time asyncrhonously.
+    _this.getCurrentTime(function(currentTime) {
+
+      // Get the duration asynchronously.
+      _this.getDuration(function(duration) {
+
+        // Convert these to floats.
+        currentTime = parseFloat(currentTime);
+        duration = parseFloat(duration);
+
+        // Trigger an event about the progress.
+        if (currentTime || duration) {
+
+          // Trigger an update event.
+          _this.trigger('timeupdate', {
+            currentTime: currentTime,
+            duration: duration
+          });
+        }
+      });
+    });
+  }, 1000);
+};
+
+/**
+ * Should be called when the media is paused.
+ */
+minplayer.players.base.prototype.onPaused = function() {
+
+  // Trigger an event that we are paused.
+  this.trigger('pause');
+
+  // Stop the play interval.
+  clearInterval(this.playInterval);
+};
+
+/**
+ * Should be called when the media is complete.
+ */
+minplayer.players.base.prototype.onComplete = function() {
+  // Stop the intervals.
+  this.clearIntervals();
+  this.trigger('ended');
+};
+
+/**
+ * Should be called when the media is done loading.
+ */
+minplayer.players.base.prototype.onLoaded = function() {
+  this.trigger('loadeddata');
+};
+
+/**
+ * Should be called when the player is waiting.
+ */
+minplayer.players.base.prototype.onWaiting = function() {
+  this.trigger('waiting');
+};
+
+/**
+ * @see minplayer.players.base#isReady
+ * @return {boolean} Checks to see if the Flash is ready.
+ */
+minplayer.players.base.prototype.isReady = function() {
+
+  // Return that the player is set and the ready flag is good.
+  return (this.media && this.ready);
+};
+
+/**
+ * Determines if the player should show the playloader.
+ *
+ * @return {bool} If this player implements its own playLoader.
+ */
+minplayer.players.base.prototype.hasPlayLoader = function() {
+  return false;
 };
 
 /**
@@ -947,6 +1637,7 @@ minplayer.players.base.prototype.playerFound = function() {
  * @return {object} The media player entity.
  */
 minplayer.players.base.prototype.create = function() {
+  this.reset();
   return null;
 };
 
@@ -955,14 +1646,8 @@ minplayer.players.base.prototype.create = function() {
  *
  * @return {object} The media player object.
  */
-minplayer.players.base.prototype.getPlayer = function() {
-  return null;
-};
-
-/**
- * Destroy the media player instance from the DOM.
- */
-minplayer.players.base.prototype.destroy = function() {
+minplayer.players.base.prototype.getMedia = function() {
+  return this.media;
 };
 
 /**
@@ -973,7 +1658,10 @@ minplayer.players.base.prototype.destroy = function() {
 minplayer.players.base.prototype.load = function(file) {
 
   // Store the media file for future lookup.
-  this.mediaFile = file;
+  if (file) {
+    this.reset();
+    this.mediaFile = file;
+  }
 };
 
 /**
@@ -992,6 +1680,8 @@ minplayer.players.base.prototype.pause = function() {
  * Stop the loaded media file.
  */
 minplayer.players.base.prototype.stop = function() {
+  // Stop the intervals.
+  this.clearIntervals();
 };
 
 /**
@@ -1015,20 +1705,63 @@ minplayer.players.base.prototype.setVolume = function(vol) {
 /**
  * Get the volume from the loaded media.
  *
+ * @param {function} callback Called when the volume is determined.
  * @return {number} The volume of the media; 0 to 1.
  */
-minplayer.players.base.prototype.getVolume = function() {
-  return 0;
+minplayer.players.base.prototype.getVolume = function(callback) {
+  return this.volume.get(callback);
+};
+
+/**
+ * Get the current time for the media being played.
+ *
+ * @param {function} callback Called when the time is determined.
+ * @return {number} The volume of the media; 0 to 1.
+ */
+minplayer.players.base.prototype.getCurrentTime = function(callback) {
+  return this.currentTime.get(callback);
 };
 
 /**
  * Return the duration of the loaded media.
  *
+ * @param {function} callback Called when the duration is determined.
  * @return {number} The duration of the loaded media.
  */
-minplayer.players.base.prototype.getDuration = function() {
-  return 0;
+minplayer.players.base.prototype.getDuration = function(callback) {
+  return this.duration.get(callback);
 };
+
+/**
+ * Return the start bytes for the loaded media.
+ *
+ * @param {function} callback Called when the start bytes is determined.
+ * @return {int} The bytes that were started.
+ */
+minplayer.players.base.prototype.getBytesStart = function(callback) {
+  return this.bytesStart.get(callback);
+};
+
+/**
+ * Return the bytes of media loaded.
+ *
+ * @param {function} callback Called when the bytes loaded is determined.
+ * @return {int} The amount of bytes loaded.
+ */
+minplayer.players.base.prototype.getBytesLoaded = function(callback) {
+  return this.bytesLoaded.get(callback);
+};
+
+/**
+ * Return the total amount of bytes.
+ *
+ * @param {function} callback Called when the bytes total is determined.
+ * @return {int} The total amount of bytes for this media.
+ */
+minplayer.players.base.prototype.getBytesTotal = function(callback) {
+  return this.bytesTotal.get(callback);
+};
+
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
 
@@ -1042,12 +1775,12 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {object} mediaFile The media file for this player.
+ * @param {function} ready Called when the player is ready.
  */
-minplayer.players.html5 = function(context, options, mediaFile) {
+minplayer.players.html5 = function(context, options, ready) {
 
   // Derive players base.
-  minplayer.players.base.call(this, context, options, mediaFile);
+  minplayer.players.base.call(this, context, options, ready);
 };
 
 /** Derive from minplayer.players.base. */
@@ -1066,7 +1799,6 @@ minplayer.players.html5.getPriority = function() {
 
 /**
  * @see minplayer.players.base#canPlay
- * @param {object} file A {@link minplayer.file} object.
  * @return {boolean} If this player can play this media type.
  */
 minplayer.players.html5.canPlay = function(file) {
@@ -1096,67 +1828,69 @@ minplayer.players.html5.prototype.construct = function() {
   // Call base constructor.
   minplayer.players.base.prototype.construct.call(this);
 
-  // See if we are loaded.
-  this.loaded = false;
-
   // Store the this pointer...
   var _this = this;
 
   // For the HTML5 player, we will just pass events along...
-  if (this.player) {
-    this.player.addEventListener('abort', function() {
+  if (this.media) {
+    this.media.addEventListener('abort', function() {
       _this.trigger('abort');
-    }, true);
-    this.player.addEventListener('loadstart', function() {
-      _this.trigger('loadstart');
-    }, true);
-    this.player.addEventListener('loadeddata', function() {
-      _this.trigger('loadeddata');
-    }, true);
-    this.player.addEventListener('loadedmetadata', function() {
-      _this.trigger('loadedmetadata');
-    }, true);
-    this.player.addEventListener('canplaythrough', function() {
-      _this.trigger('canplaythrough');
-    }, true);
-    this.player.addEventListener('ended', function() {
-      _this.trigger('ended');
-    }, true);
-    this.player.addEventListener('pause', function() {
-      _this.trigger('pause');
-    }, true);
-    this.player.addEventListener('play', function() {
-      _this.trigger('play');
-    }, true);
-    this.player.addEventListener('playing', function() {
-      _this.trigger('playing');
-    }, true);
-    this.player.addEventListener('error', function() {
-      _this.trigger('error');
-    }, true);
-    this.player.addEventListener('waiting', function() {
-      _this.trigger('waiting');
-    }, true);
-    this.player.addEventListener('timeupdate', function(event) {
-      var dur = this.duration;
-      var cTime = this.currentTime;
-      _this.duration = dur;
-      _this.currentTime = cTime;
-      _this.trigger('timeupdate', {currentTime: cTime, duration: dur});
-    }, true);
-    this.player.addEventListener('durationchange', function() {
-      _this.duration = this.duration;
+    }, false);
+    this.media.addEventListener('loadstart', function() {
+      _this.onReady();
+    }, false);
+    this.media.addEventListener('loadeddata', function() {
+      _this.onLoaded();
+    }, false);
+    this.media.addEventListener('loadedmetadata', function() {
+      _this.onLoaded();
+    }, false);
+    this.media.addEventListener('canplaythrough', function() {
+      _this.onLoaded();
+    }, false);
+    this.media.addEventListener('ended', function() {
+      _this.onComplete();
+    }, false);
+    this.media.addEventListener('pause', function() {
+      _this.onPaused();
+    }, false);
+    this.media.addEventListener('play', function() {
+      _this.onPlaying();
+    }, false);
+    this.media.addEventListener('playing', function() {
+      _this.onPlaying();
+    }, false);
+    this.media.addEventListener('error', function() {
+      var error = '';
+      switch (this.error.code) {
+         case MEDIA_ERR_NETWORK:
+            error = 'Network error - please try again later.';
+            break;
+         case MEDIA_ERR_DECODE:
+            error = 'Video is broken..';
+            break;
+         case MEDIA_ERR_SRC_NOT_SUPPORTED:
+            error = 'Sorry, your browser can\'t play this video.';
+            break;
+       }
+      _this.trigger('error', error);
+    }, false);
+    this.media.addEventListener('waiting', function() {
+      _this.onWaiting();
+    }, false);
+    this.media.addEventListener('durationchange', function() {
+      _this.duration.set(this.duration);
       _this.trigger('durationchange', {duration: this.duration});
-    }, true);
-    this.player.addEventListener('progress', function(event) {
-      _this.trigger('progress', {loaded: event.loaded, total: event.total});
-    }, true);
-
+    }, false);
+    this.media.addEventListener('progress', function(event) {
+      _this.bytesTotal.set(event.total);
+      _this.bytesLoaded.set(event.loaded);
+    }, false);
     if (this.autoBuffer()) {
-      this.player.autobuffer = true;
+      this.media.autobuffer = true;
     } else {
-      this.player.autobuffer = false;
-      this.player.preload = 'none';
+      this.media.autobuffer = false;
+      this.media.preload = 'none';
     }
   }
 };
@@ -1166,9 +1900,9 @@ minplayer.players.html5.prototype.construct = function() {
  * @return {boolean} TRUE - the player is able to autobuffer.
  */
 minplayer.players.html5.prototype.autoBuffer = function() {
-  var preload = this.player.preload !== 'none';
-  if (typeof this.player.hasAttribute === 'function') {
-    return this.player.hasAttribute('preload') && preload;
+  var preload = this.media.preload !== 'none';
+  if (typeof this.media.hasAttribute === 'function') {
+    return this.media.hasAttribute('preload') && preload;
   }
   else {
     return false;
@@ -1188,6 +1922,7 @@ minplayer.players.html5.prototype.playerFound = function() {
  * @return {object} The media player entity.
  */
 minplayer.players.html5.prototype.create = function() {
+  minplayer.players.base.prototype.create.call(this);
   var element = document.createElement(this.mediaFile.type), attribute = '';
   for (attribute in this.options.attributes) {
     if (this.options.attributes.hasOwnProperty(attribute)) {
@@ -1198,10 +1933,10 @@ minplayer.players.html5.prototype.create = function() {
 };
 
 /**
- * @see minplayer.players.base#getPlayer
+ * @see minplayer.players.base#getMedia
  * @return {object} The media player object.
  */
-minplayer.players.html5.prototype.getPlayer = function() {
+minplayer.players.html5.prototype.getMedia = function() {
   return this.options.elements.media.eq(0)[0];
 };
 
@@ -1209,19 +1944,25 @@ minplayer.players.html5.prototype.getPlayer = function() {
  * @see minplayer.players.base#load
  */
 minplayer.players.html5.prototype.load = function(file) {
-  // Always call the base first on load...
-  minplayer.players.base.prototype.load.call(this, file);
 
-  if (this.loaded) {
-    // Change the source...
-    var code = '<source src="' + file.path + '" ';
-    code += 'type="' + file.mimetype + '"';
-    code += file.codecs ? ' codecs="' + file.path + '">' : '>';
-    this.options.elements.player.attr('src', '').empty().html(code);
+  if (file && this.isReady()) {
+
+    // Get the current source.
+    var src = this.options.elements.player.attr('src');
+
+    // If the source is different.
+    if (src != file.path) {
+
+      // Change the source...
+      var code = '<source src="' + file.path + '" ';
+      code += 'type="' + file.mimetype + '"';
+      code += file.codecs ? ' codecs="' + file.path + '">' : '>';
+      this.options.elements.player.attr('src', '').empty().html(code);
+    }
   }
 
-  // Set the loaded flag.
-  this.loaded = true;
+  // Always call the base first on load...
+  minplayer.players.base.prototype.load.call(this, file);
 };
 
 /**
@@ -1229,7 +1970,9 @@ minplayer.players.html5.prototype.load = function(file) {
  */
 minplayer.players.html5.prototype.play = function() {
   minplayer.players.base.prototype.play.call(this);
-  this.player.play();
+  if (this.isReady()) {
+    this.media.play();
+  }
 };
 
 /**
@@ -1237,7 +1980,9 @@ minplayer.players.html5.prototype.play = function() {
  */
 minplayer.players.html5.prototype.pause = function() {
   minplayer.players.base.prototype.pause.call(this);
-  this.player.pause();
+  if (this.isReady()) {
+    this.media.pause();
+  }
 };
 
 /**
@@ -1245,8 +1990,10 @@ minplayer.players.html5.prototype.pause = function() {
  */
 minplayer.players.html5.prototype.stop = function() {
   minplayer.players.base.prototype.stop.call(this);
-  this.player.pause();
-  this.player.src = '';
+  if (this.isReady()) {
+    this.media.pause();
+    this.media.src = '';
+  }
 };
 
 /**
@@ -1254,7 +2001,9 @@ minplayer.players.html5.prototype.stop = function() {
  */
 minplayer.players.html5.prototype.seek = function(pos) {
   minplayer.players.base.prototype.seek.call(this, pos);
-  this.player.currentTime = pos;
+  if (this.isReady()) {
+    this.media.currentTime = pos;
+  }
 };
 
 /**
@@ -1262,24 +2011,93 @@ minplayer.players.html5.prototype.seek = function(pos) {
  */
 minplayer.players.html5.prototype.setVolume = function(vol) {
   minplayer.players.base.prototype.setVolume.call(this, vol);
-  this.player.volume = vol;
+  if (this.isReady()) {
+    this.media.volume = vol;
+  }
 };
 
 /**
  * @see minplayer.players.base#getVolume
- * @return {number} The volume of the media; 0 to 1.
  */
-minplayer.players.html5.prototype.getVolume = function() {
-  return this.player.volume;
+minplayer.players.html5.prototype.getVolume = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.volume);
+  }
 };
 
 /**
  * @see minplayer.players.base#getDuration
- * @return {number} The duration of the loaded media.
  */
-minplayer.players.html5.prototype.getDuration = function() {
-  var dur = this.player.duration;
-  return (dur === Infinity) ? 0 : dur;
+minplayer.players.html5.prototype.getDuration = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.duration);
+  }
+};
+
+/**
+ * @see minplayer.players.base#getCurrentTime
+ */
+minplayer.players.html5.prototype.getCurrentTime = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.currentTime);
+  }
+};
+
+/**
+ * @see minplayer.players.base#getBytesLoaded
+ */
+minplayer.players.html5.prototype.getBytesLoaded = function(callback) {
+  if (this.isReady()) {
+    var loaded = 0;
+
+    // Check several different possibilities.
+    if (this.bytesLoaded.value) {
+      loaded = this.bytesLoaded.value;
+    }
+    else if (this.media.buffered &&
+        this.media.buffered.length > 0 &&
+        this.media.buffered.end &&
+        this.media.duration) {
+      loaded = this.media.buffered.end(0);
+    }
+    else if (this.media.bytesTotal != undefined &&
+             this.media.bytesTotal > 0 &&
+             this.media.bufferedBytes != undefined) {
+      loaded = this.media.bufferedBytes;
+    }
+
+    // Return the loaded amount.
+    callback(loaded);
+  }
+};
+
+/**
+ * @see minplayer.players.base#getBytesTotal
+ */
+minplayer.players.html5.prototype.getBytesTotal = function(callback) {
+  if (this.isReady()) {
+
+    var total = 0;
+
+    // Check several different possibilities.
+    if (this.bytesTotal.value) {
+      total = this.bytesTotal.value;
+    }
+    else if (this.media.buffered &&
+        this.media.buffered.length > 0 &&
+        this.media.buffered.end &&
+        this.media.duration) {
+      total = this.media.duration;
+    }
+    else if (this.media.bytesTotal != undefined &&
+             this.media.bytesTotal > 0 &&
+             this.media.bufferedBytes != undefined) {
+      total = this.media.bytesTotal;
+    }
+
+    // Return the loaded amount.
+    callback(total);
+  }
 };
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
@@ -1294,17 +2112,12 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {object} mediaFile The media file for this player.
+ * @param {function} ready Called when the player is ready.
  */
-minplayer.players.flash = function(context, options, mediaFile) {
-
-  this.durationInterval = null;
-  this.mediaInterval = null;
-  this.duration = 0;
-  this.ready = false;
+minplayer.players.flash = function(context, options, ready) {
 
   // Derive from players base.
-  minplayer.players.base.call(this, context, options, mediaFile);
+  minplayer.players.base.call(this, context, options, ready);
 };
 
 /** Derive from minplayer.players.base. */
@@ -1323,7 +2136,6 @@ minplayer.players.flash.getPriority = function() {
 
 /**
  * @see minplayer.players.base#canPlay
- * @param {object} file A {@link minplayer.file} object.
  * @return {boolean} If this player can play this media type.
  */
 minplayer.players.flash.canPlay = function(file) {
@@ -1401,70 +2213,6 @@ minplayer.players.flash.getFlash = function(params) {
 };
 
 /**
- * Called when the player is ready.
- */
-minplayer.players.flash.prototype.onReady = function() {
-  var _this = this;
-  this.ready = true;
-  this.trigger('loadstart');
-
-  // Perform a check for the duration every second until it shows up.
-  this.durationInterval = setInterval(function() {
-    if (_this.getDuration()) {
-      clearInterval(_this.durationInterval);
-      _this.trigger('durationchange', {duration: _this.getDuration()});
-    }
-  }, 1000);
-};
-
-/**
- * Should be called when the media is playing.
- */
-minplayer.players.flash.prototype.onPlaying = function() {
-  var _this = this;
-  this.trigger('playing');
-  this.mediaInterval = setInterval(function() {
-    var cTime = _this.getCurrentTime();
-    var dur = _this.getDuration();
-    var data = {currentTime: cTime, duration: dur};
-    _this.trigger('timeupdate', data);
-  }, 1000);
-};
-
-/**
- * Should be called when the minplayer is paused.
- */
-minplayer.players.flash.prototype.onPaused = function() {
-  this.trigger('pause');
-  clearInterval(this.minplayerInterval);
-};
-
-/**
- * Should be called when the meta data has finished loading.
- */
-minplayer.players.flash.prototype.onMeta = function() {
-  clearInterval(this.durationInterval);
-  this.trigger('loadeddata');
-  this.trigger('loadedmetadata');
-  this.trigger('durationchange', {duration: this.getDuration()});
-};
-
-/**
- * Reset the flash player variables.
- */
-minplayer.players.flash.prototype.reset = function() {
-  this.ready = false;
-  this.duration = 0;
-};
-
-/**
- * @see minplayer.players.base#destroy
- */
-minplayer.players.flash.prototype.destroy = function() {
-  this.reset();
-};
-
-/**
  * @see minplayer.players.base#playerFound
  * @return {boolean} TRUE - if the player is in the DOM, FALSE otherwise.
  */
@@ -1473,67 +2221,13 @@ minplayer.players.flash.prototype.playerFound = function() {
 };
 
 /**
- * @see minplayer.players.base#create
- * @return {object} The media player entity.
- */
-minplayer.players.flash.prototype.create = function() {
-  // Reset the variables.
-  this.reset();
-  return null;
-};
-
-/**
- * @see minplayer.players.base#getPlayer
+ * @see minplayer.players.base#getMedia
  * @return {object} The media player object.
  */
-minplayer.players.flash.prototype.getPlayer = function() {
+minplayer.players.flash.prototype.getMedia = function() {
   // IE needs the object, everyone else just needs embed.
   var object = jQuery.browser.msie ? 'object' : 'embed';
   return jQuery(object, this.display).eq(0)[0];
-};
-
-/**
- * @see minplayer.players.base#load
- */
-minplayer.players.flash.prototype.load = function(file) {
-  this.duration = 0;
-  minplayer.players.base.prototype.load.call(this, file);
-};
-
-/**
- * Return the player time duration.
- *
- * @return {int} The player duration.
- */
-minplayer.players.flash.prototype.getPlayerDuration = function() {
-  return 0;
-};
-
-/**
- * @see minplayer.players.base#getDuration
- * @return {number} The duration of the loaded media.
- */
-minplayer.players.flash.prototype.getDuration = function() {
-
-  // Make sure to cache the duration since it is called often.
-  if (this.duration) {
-    return this.duration;
-  }
-  else if (this.isReady()) {
-    this.duration = this.getPlayerDuration();
-    return this.duration;
-  }
-  else {
-    return minplayer.players.base.prototype.getDuration.call(this);
-  }
-};
-
-/**
- * @see minplayer.players.base#isReady
- * @return {boolean} Checks to see if the Flash is ready.
- */
-minplayer.players.flash.prototype.isReady = function() {
-  return (this.player && this.ready);
 };
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
@@ -1548,29 +2242,12 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {object} mediaFile The media file for this player.
+ * @param {function} ready Called when the player is ready.
  */
-minplayer.players.minplayer = function(context, options, mediaFile) {
-
-  // Called when the flash provides a media update.
-  this.onMediaUpdate = function(eventType) {
-    if (this.ready) {
-      switch (eventType) {
-        case 'mediaMeta':
-          minplayer.players.flash.prototype.onMeta.call(this);
-          break;
-        case 'mediaPlaying':
-          minplayer.players.flash.prototype.onPlaying.call(this);
-          break;
-        case 'mediaPaused':
-          minplayer.players.flash.prototype.onPaused.call(this);
-          break;
-      }
-    }
-  };
+minplayer.players.minplayer = function(context, options, ready) {
 
   // Derive from players flash.
-  minplayer.players.flash.call(this, context, options, mediaFile);
+  minplayer.players.flash.call(this, context, options, ready);
 };
 
 /** Derive from minplayer.players.flash. */
@@ -1623,7 +2300,6 @@ minplayer.players.minplayer.getPriority = function() {
 
 /**
  * @see minplayer.players.base#canPlay
- * @param {object} file A {@link minplayer.file} object.
  * @return {boolean} If this player can play this media type.
  */
 minplayer.players.minplayer.canPlay = function(file) {
@@ -1651,16 +2327,15 @@ minplayer.players.minplayer.canPlay = function(file) {
  * @return {object} The media player entity.
  */
 minplayer.players.minplayer.prototype.create = function() {
-
   minplayer.players.flash.prototype.create.call(this);
 
   // The flash variables for this flash player.
   var flashVars = {
     'id': this.options.id,
-    'debug': this.options.settings.debug,
+    'debug': this.options.debug,
     'config': 'nocontrols',
     'file': this.mediaFile.path,
-    'autostart': this.options.settings.autoplay
+    'autostart': this.options.autoplay
   };
 
   // Return a flash media player object.
@@ -1668,7 +2343,7 @@ minplayer.players.minplayer.prototype.create = function() {
     swf: this.options.swfplayer,
     id: this.options.id + '_player',
     playerType: 'flash',
-    width: this.options.settings.width,
+    width: this.options.width,
     height: '100%',
     flashvars: flashVars,
     wmode: this.options.wmode
@@ -1676,12 +2351,34 @@ minplayer.players.minplayer.prototype.create = function() {
 };
 
 /**
+ * Called when the Flash player has an update.
+ *
+ * @param {string} eventType The event that was triggered in the player.
+ */
+minplayer.players.minplayer.prototype.onMediaUpdate = function(eventType) {
+  switch (eventType) {
+    case 'mediaMeta':
+      this.onLoaded();
+      break;
+    case 'mediaPlaying':
+      this.onPlaying();
+      break;
+    case 'mediaPaused':
+      this.onPaused();
+      break;
+    case 'mediaComplete':
+      this.onComplete();
+      break;
+  }
+};
+
+/**
  * @see minplayer.players.base#load
  */
 minplayer.players.minplayer.prototype.load = function(file) {
   minplayer.players.flash.prototype.load.call(this, file);
-  if (this.isReady()) {
-    this.player.loadMedia(this.mediaFile.path, this.mediaFile.stream);
+  if (file && this.isReady()) {
+    this.media.loadMedia(file.path, file.stream);
   }
 };
 
@@ -1691,7 +2388,7 @@ minplayer.players.minplayer.prototype.load = function(file) {
 minplayer.players.minplayer.prototype.play = function() {
   minplayer.players.flash.prototype.play.call(this);
   if (this.isReady()) {
-    this.player.playMedia();
+    this.media.playMedia();
   }
 };
 
@@ -1701,7 +2398,7 @@ minplayer.players.minplayer.prototype.play = function() {
 minplayer.players.minplayer.prototype.pause = function() {
   minplayer.players.flash.prototype.pause.call(this);
   if (this.isReady()) {
-    this.player.pauseMedia();
+    this.media.pauseMedia();
   }
 };
 
@@ -1711,7 +2408,7 @@ minplayer.players.minplayer.prototype.pause = function() {
 minplayer.players.minplayer.prototype.stop = function() {
   minplayer.players.flash.prototype.stop.call(this);
   if (this.isReady()) {
-    this.player.stopMedia();
+    this.media.stopMedia();
   }
 };
 
@@ -1721,7 +2418,7 @@ minplayer.players.minplayer.prototype.stop = function() {
 minplayer.players.minplayer.prototype.seek = function(pos) {
   minplayer.players.flash.prototype.seek.call(this, pos);
   if (this.isReady()) {
-    this.player.seekMedia(pos);
+    this.media.seekMedia(pos);
   }
 };
 
@@ -1731,53 +2428,53 @@ minplayer.players.minplayer.prototype.seek = function(pos) {
 minplayer.players.minplayer.prototype.setVolume = function(vol) {
   minplayer.players.flash.prototype.setVolume.call(this, vol);
   if (this.isReady()) {
-    this.player.setVolume(vol);
+    this.media.setVolume(vol);
   }
 };
 
 /**
  * @see minplayer.players.base#getVolume
- * @return {number} The volume of the media; 0 to 1.
  */
-minplayer.players.minplayer.prototype.getVolume = function() {
+minplayer.players.minplayer.prototype.getVolume = function(callback) {
   if (this.isReady()) {
-    return this.player.getVolume();
-  }
-  else {
-    return minplayer.players.flash.prototype.getVolume.call(this);
+    callback(this.media.getVolume());
   }
 };
 
 /**
- * @see minplayer.players.flash#getPlayerDuration
- * @return {int} The player duration.
+ * @see minplayer.players.flash#getDuration
  */
-minplayer.players.minplayer.prototype.getPlayerDuration = function() {
-  return this.isReady() ? this.player.getDuration() : 0;
+minplayer.players.minplayer.prototype.getDuration = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getDuration());
+  }
 };
 
 /**
  * @see minplayer.players.base#getCurrentTime
- * @return {number} The current playhead time.
  */
-minplayer.players.minplayer.prototype.getCurrentTime = function() {
-  return this.isReady() ? this.player.getCurrentTime() : 0;
+minplayer.players.minplayer.prototype.getCurrentTime = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getCurrentTime());
+  }
 };
 
 /**
  * @see minplayer.players.base#getBytesLoaded
- * @return {number} Returns the bytes loaded from the media.
  */
-minplayer.players.minplayer.prototype.getBytesLoaded = function() {
-  return this.isReady() ? this.player.getMediaBytesLoaded() : 0;
+minplayer.players.minplayer.prototype.getBytesLoaded = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getMediaBytesLoaded());
+  }
 };
 
 /**
  * @see minplayer.players.base#getBytesTotal.
- * @return {number} The total number of bytes of the loaded media.
  */
-minplayer.players.minplayer.prototype.getBytesTotal = function() {
-  return this.isReady() ? this.player.getMediaBytesTotal() : 0;
+minplayer.players.minplayer.prototype.getBytesTotal = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getMediaBytesTotal());
+  }
 };
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
@@ -1787,91 +2484,27 @@ minplayer.players = minplayer.players || {};
 
 /**
  * @constructor
- * @extends minplayer.display
- * @class The Flash media player class to control the flash fallback.
+ * @extends minplayer.players.base
+ * @class The YouTube media player.
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {object} mediaFile The media file for this player.
+ * @param {function} ready Called when the player is ready.
  */
-minplayer.players.youtube = function(context, options, mediaFile) {
-
-  // Derive from players flash.
-  minplayer.players.flash.call(this, context, options, mediaFile);
+minplayer.players.youtube = function(context, options, ready) {
 
   /** The quality of the YouTube stream. */
   this.quality = 'default';
+
+  // Derive from players base.
+  minplayer.players.base.call(this, context, options, ready);
 };
 
-/** Derive from minplayer.players.flash. */
-minplayer.players.youtube.prototype = new minplayer.players.flash();
+/** Derive from minplayer.players.base. */
+minplayer.players.youtube.prototype = new minplayer.players.base();
 
 /** Reset the constructor. */
 minplayer.players.youtube.prototype.constructor = minplayer.players.youtube;
-
-/**
- * Called when the YouTube player is ready.
- *
- * @param {string} id The media player ID.
- */
-window.onYouTubePlayerReady = function(id) {
-  if (minplayer.player[id]) {
-    minplayer.player[id].media.onReady();
-  }
-};
-
-/**
- * @see minplayer.plugin.construct
- */
-minplayer.players.youtube.prototype.construct = function() {
-
-  // Call flash constructor.
-  minplayer.players.flash.prototype.construct.call(this);
-
-  // Translates the player state for the YouTube API player.
-  this.getPlayerState = function(playerState) {
-    switch (playerState) {
-      case 5:
-        return 'ready';
-      case 3:
-        return 'waiting';
-      case 2:
-        return 'pause';
-      case 1:
-        return 'play';
-      case 0:
-        return 'ended';
-      case -1:
-        return 'abort';
-      default:
-        return 'unknown';
-    }
-  };
-
-  // Create our callback functions.
-  var _this = this;
-  window[this.options.id + 'StateChange'] = function(newState) {
-    _this.trigger(_this.getPlayerState(newState));
-  };
-
-  window[this.options.id + 'PlayerError'] = function(errorCode) {
-    _this.trigger('error', errorCode);
-  };
-
-  window[this.options.id + 'QualityChange'] = function(newQuality) {
-    _this.quality = newQuality;
-  };
-
-  // Add our event listeners.
-  if (this.player) {
-    var onStateChange = this.options.id + 'StateChange';
-    var onError = this.options.id + 'PlayerError';
-    var onQuality = this.options.id + 'QualityChange';
-    this.player.addEventListener('onStateChange', onStateChange);
-    this.player.addEventListener('onError', onError);
-    this.player.addEventListener('onPlaybackQualityChange', onQuality);
-  }
-};
 
 /**
  * @see minplayer.players.base#getPriority
@@ -1883,7 +2516,6 @@ minplayer.players.youtube.getPriority = function() {
 
 /**
  * @see minplayer.players.base#canPlay
- * @param {object} file A {@link minplayer.file} object.
  * @return {boolean} If this player can play this media type.
  */
 minplayer.players.youtube.canPlay = function(file) {
@@ -1898,59 +2530,204 @@ minplayer.players.youtube.canPlay = function(file) {
 };
 
 /**
+ * Return the ID for a provided media file.
+ *
+ * @param {object} file A {@link minplayer.file} object.
+ * @return {string} The ID for the provided media.
+ */
+minplayer.players.youtube.getMediaId = function(file) {
+  var regex = /^http[s]?\:\/\/(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9]+)/i;
+  if (file.path.search(regex) === 0) {
+    return file.path.replace(regex, '$2');
+  }
+  else {
+    return file.path;
+  }
+};
+
+/**
+ * Register this youtube player so that multiple players can be present
+ * on the same page without event collision.
+ */
+minplayer.players.youtube.prototype.register = function() {
+
+  /**
+   * Register the standard youtube api ready callback.
+   */
+  window.onYouTubePlayerAPIReady = function() {
+
+    // Iterate through all of the player instances.
+    for (var id in minplayer.plugin.instances) {
+
+      // Make sure this is a property.
+      if (minplayer.plugin.instances.hasOwnProperty(id)) {
+
+        // Get the instance and check to see if it is a youtube player.
+        var instance = minplayer.plugin.instances[id]['player'];
+        if (instance.currentPlayer == 'youtube') {
+
+          // Create a new youtube player object for this instance only.
+          var playerId = instance.options.id + '-player';
+          instance.player.media = new YT.Player(playerId, {
+            events: {
+              'onReady': function(event) {
+                instance.player.onReady(event);
+              },
+              'onStateChange': function(event) {
+                instance.player.onPlayerStateChange(event);
+              },
+              'onPlaybackQualityChange': function(newQuality) {
+                instance.player.onQualityChange(newQuality);
+              },
+              'onError': function(errorCode) {
+                instance.player.onError(errorCode);
+              }
+            }
+          });
+        }
+      }
+    }
+  }
+};
+
+/**
+ * Translates the player state for the YouTube API player.
+ *
+ * @param {number} playerState The YouTube player state.
+ */
+minplayer.players.youtube.prototype.setPlayerState = function(playerState) {
+  switch (playerState) {
+    case YT.PlayerState.CUED:
+      break;
+    case YT.PlayerState.BUFFERING:
+      this.onWaiting();
+      break;
+    case YT.PlayerState.PAUSED:
+      this.onPaused();
+      break;
+    case YT.PlayerState.PLAYING:
+      this.onPlaying();
+      break;
+    case YT.PlayerState.ENDED:
+      this.onComplete();
+      break;
+    default:
+      break;
+  }
+};
+
+/**
+ * Called when an error occurs.
+ *
+ * @param {string} event The onReady event that was triggered.
+ */
+minplayer.players.youtube.prototype.onReady = function(event) {
+  minplayer.players.base.prototype.onReady.call(this);
+  this.onLoaded();
+};
+
+/**
+ * Checks to see if this player can be found.
+ * @return {bool} TRUE - Player is found, FALSE - otherwise.
+ */
+minplayer.players.youtube.prototype.playerFound = function() {
+  var iframe = this.display.find('iframe#' + this.options.id + '-player');
+  return (iframe.length > 0);
+};
+
+/**
+ * Called when the player state changes.
+ *
+ * @param {object} event A JavaScript Event.
+ */
+minplayer.players.youtube.prototype.onPlayerStateChange = function(event) {
+  this.setPlayerState(event.data);
+};
+
+/**
+ * Called when the player quality changes.
+ *
+ * @param {string} newQuality The new quality for the change.
+ */
+minplayer.players.youtube.prototype.onQualityChange = function(newQuality) {
+  this.quality = newQuality;
+};
+
+/**
+ * Called when an error occurs.
+ *
+ * @param {string} errorCode The error that was triggered.
+ */
+minplayer.players.youtube.prototype.onError = function(errorCode) {
+  this.trigger('error', errorCode);
+};
+
+/**
+ * Determines if the player should show the playloader.
+ *
+ * @return {bool} If this player implements its own playLoader.
+ */
+minplayer.players.youtube.prototype.hasPlayLoader = function() {
+  return true;
+};
+
+/**
  * @see minplayer.players.base#create
  * @return {object} The media player entity.
  */
 minplayer.players.youtube.prototype.create = function() {
+  minplayer.players.base.prototype.create.call(this);
 
-  minplayer.players.base.prototype.flash.call(this);
+  // Insert the YouTube iframe API player.
+  var tag = document.createElement('script');
+  tag.src = 'http://www.youtube.com/player_api?enablejsapi=1';
+  var firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-  // The flash variables for this flash player.
-  var flashVars = {
-    'file': this.mediaFile.path,
-    'autostart': this.options.settings.autoplay
-  };
+  // Now register this player.
+  this.register();
 
-  // Return a flash media player object.
-  var rand = Math.floor(Math.random() * 1000000);
-  var flashPlayer = 'http://www.youtube.com/apiplayer?rand=' + rand;
-  flashPlayer += '&amp;version=3&amp;enablejsapi=1&amp;playerapiid=';
-  flashPlayer += this.options.id;
-  return minplayer.players.flash.getFlash({
-    swf: flashPlayer,
-    id: this.options.id + '_player',
-    playerType: 'flash',
-    width: this.options.settings.width,
-    height: '100%',
-    flashvars: flashVars,
-    wmode: this.options.wmode
+  // Create the iframe for this player.
+  var iframe = document.createElement('iframe');
+  iframe.setAttribute('id', this.options.id + '-player');
+  iframe.setAttribute('type', 'text/html');
+  iframe.setAttribute('width', '100%');
+  iframe.setAttribute('height', '100%');
+  iframe.setAttribute('frameborder', '0');
+
+  // Get the source.
+  var src = 'http://www.youtube.com/embed/';
+  src += this.mediaFile.id + '?';
+
+  // Determine the origin of this script.
+  var origin = location.protocol;
+  origin += '//' + location.hostname;
+  origin += (location.port && ':' + location.port);
+
+  // Add the parameters to the src.
+  src += jQuery.param({
+    'wmode': 'opaque',
+    'controls': 0,
+    'enablejsapi': 1,
+    'origin': origin,
+    'autoplay': this.options.autoplay,
+    'loop': this.options.loop
   });
-};
 
-/**
- * Return the Regular Expression to find a YouTube ID.
- *
- * @return {RegEx} A regular expression to find a YouTube ID.
- */
-minplayer.players.youtube.prototype.regex = function() {
-  return /^http[s]?\:\/\/(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9]+)/i;
+  // Set the source of the iframe.
+  iframe.setAttribute('src', src);
+
+  // Return the player.
+  return iframe;
 };
 
 /**
  * @see minplayer.players.base#load
  */
 minplayer.players.youtube.prototype.load = function(file) {
-  minplayer.players.flash.prototype.load.call(this, file);
-  if (this.isReady()) {
-    var regex = this.regex();
-    var id = '';
-    if (this.mediaFile.path.search(regex) === 0) {
-      id = this.mediaFile.path.replace(regex, '$2');
-    }
-    else {
-      id = this.mediaFile.path;
-    }
-    this.player.loadVideoById(id, 0, this.quality);
+  minplayer.players.base.prototype.load.call(this, file);
+  if (file && this.isReady()) {
+    this.media.loadVideoById(file.id, 0, this.quality);
   }
 };
 
@@ -1958,9 +2735,9 @@ minplayer.players.youtube.prototype.load = function(file) {
  * @see minplayer.players.base#play
  */
 minplayer.players.youtube.prototype.play = function() {
-  minplayer.players.flash.prototype.play.call(this);
+  minplayer.players.base.prototype.play.call(this);
   if (this.isReady()) {
-    this.player.playVideo();
+    this.media.playVideo();
   }
 };
 
@@ -1968,9 +2745,9 @@ minplayer.players.youtube.prototype.play = function() {
  * @see minplayer.players.base#pause
  */
 minplayer.players.youtube.prototype.pause = function() {
-  minplayer.players.flash.prototype.pause.call(this);
+  minplayer.players.base.prototype.pause.call(this);
   if (this.isReady()) {
-    this.player.pauseVideo();
+    this.media.pauseVideo();
   }
 };
 
@@ -1978,9 +2755,9 @@ minplayer.players.youtube.prototype.pause = function() {
  * @see minplayer.players.base#stop
  */
 minplayer.players.youtube.prototype.stop = function() {
-  minplayer.players.flash.prototype.stop.call(this);
+  minplayer.players.base.prototype.stop.call(this);
   if (this.isReady()) {
-    this.player.stopVideo();
+    this.media.stopVideo();
   }
 };
 
@@ -1988,9 +2765,9 @@ minplayer.players.youtube.prototype.stop = function() {
  * @see minplayer.players.base#seek
  */
 minplayer.players.youtube.prototype.seek = function(pos) {
-  minplayer.players.flash.prototype.seek.call(this, pos);
+  minplayer.players.base.prototype.seek.call(this, pos);
   if (this.isReady()) {
-    this.player.seekTo(pos, true);
+    this.media.seekTo(pos, true);
   }
 };
 
@@ -1998,55 +2775,306 @@ minplayer.players.youtube.prototype.seek = function(pos) {
  * @see minplayer.players.base#setVolume
  */
 minplayer.players.youtube.prototype.setVolume = function(vol) {
-  minplayer.players.flash.prototype.setVolume.call(this, vol);
+  minplayer.players.base.prototype.setVolume.call(this, vol);
   if (this.isReady()) {
-    this.player.setVolume(vol * 100);
+    this.media.setVolume(vol * 100);
   }
 };
 
 /**
  * @see minplayer.players.base#getVolume
- * @return {number} The volume of the media; 0 to 1.
  */
-minplayer.players.youtube.prototype.getVolume = function() {
+minplayer.players.youtube.prototype.getVolume = function(callback) {
   if (this.isReady()) {
-    return (this.player.getVolume() / 100);
-  }
-  else {
-    return minplayer.players.flash.prototype.getVolume.call(this);
+    callback(this.media.getVolume());
   }
 };
 
 /**
- * @see minplayer.players.flash#getPlayerDuration.
- * @return {int} The player duration.
+ * @see minplayer.players.flash#getDuration.
  */
-minplayer.players.youtube.prototype.getPlayerDuration = function() {
-  return this.isReady() ? this.player.getDuration() : 0;
+minplayer.players.youtube.prototype.getDuration = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getDuration());
+  }
 };
 
 /**
  * @see minplayer.players.base#getCurrentTime
- * @return {number} The current playhead time.
  */
-minplayer.players.youtube.prototype.getCurrentTime = function() {
-  return this.isReady() ? this.player.getCurrentTime() : 0;
+minplayer.players.youtube.prototype.getCurrentTime = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getCurrentTime());
+  }
+};
+
+/**
+ * @see minplayer.players.base#getBytesStart.
+ */
+minplayer.players.youtube.prototype.getBytesStart = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getVideoStartBytes());
+  }
 };
 
 /**
  * @see minplayer.players.base#getBytesLoaded.
- * @return {number} Returns the bytes loaded from the media.
  */
-minplayer.players.youtube.prototype.getBytesLoaded = function() {
-  return this.isReady() ? this.player.getVideoBytesLoaded() : 0;
+minplayer.players.youtube.prototype.getBytesLoaded = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getVideoBytesLoaded());
+  }
 };
 
 /**
  * @see minplayer.players.base#getBytesTotal.
- * @return {number} The total number of bytes of the loaded media.
  */
-minplayer.players.youtube.prototype.getBytesTotal = function() {
-  return this.isReady() ? this.player.getVideoBytesTotal() : 0;
+minplayer.players.youtube.prototype.getBytesTotal = function(callback) {
+  if (this.isReady()) {
+    callback(this.media.getVideoBytesTotal());
+  }
+};
+/** The minplayer namespace. */
+var minplayer = minplayer || {};
+
+/** All the media player implementations */
+minplayer.players = minplayer.players || {};
+
+/**
+ * @constructor
+ * @extends minplayer.players.base
+ * @class The vimeo media player.
+ *
+ * @param {object} context The jQuery context.
+ * @param {object} options This components options.
+ * @param {function} ready Called when the player is ready.
+ */
+minplayer.players.vimeo = function(context, options, ready) {
+
+  // Derive from players base.
+  minplayer.players.base.call(this, context, options, ready);
+};
+
+/** Derive from minplayer.players.base. */
+minplayer.players.vimeo.prototype = new minplayer.players.base();
+
+/** Reset the constructor. */
+minplayer.players.vimeo.prototype.constructor = minplayer.players.vimeo;
+
+/**
+ * @see minplayer.players.base#getPriority
+ * @return {number} The priority of this media player.
+ */
+minplayer.players.vimeo.getPriority = function() {
+  return 10;
+};
+
+/**
+ * @see minplayer.players.base#canPlay
+ * @return {boolean} If this player can play this media type.
+ */
+minplayer.players.vimeo.canPlay = function(file) {
+
+  // Check for the mimetype for vimeo.
+  if (file.mimetype === 'video/vimeo') {
+    return true;
+  }
+
+  // If the path is a vimeo path, then return true.
+  return (file.path.search(/^http(s)?\:\/\/(www\.)?vimeo\.com/i) === 0);
+};
+
+/**
+ * Return the ID for a provided media file.
+ *
+ * @param {object} file A {@link minplayer.file} object.
+ * @return {string} The ID for the provided media.
+ */
+minplayer.players.vimeo.getMediaId = function(file) {
+  var regex = /^http[s]?\:\/\/(www\.)?vimeo\.com\/(\?v\=)?([0-9]+)/i;
+  if (file.path.search(regex) === 0) {
+    return file.path.replace(regex, '$3');
+  }
+  else {
+    return file.path;
+  }
+};
+
+/**
+ * @see minplayer.players.base#reset
+ */
+minplayer.players.vimeo.prototype.reset = function() {
+
+  // Reset the flash variables..
+  minplayer.players.base.prototype.reset.call(this);
+};
+
+/**
+ * @see minplayer.players.base#create
+ * @return {object} The media player entity.
+ */
+minplayer.players.vimeo.prototype.create = function() {
+  minplayer.players.base.prototype.create.call(this);
+
+  // Insert the Vimeo Froogaloop player.
+  var tag = document.createElement('script');
+  tag.src = 'http://a.vimeocdn.com/js/froogaloop2.min.js';
+  var firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+  // Create the iframe for this player.
+  var iframe = document.createElement('iframe');
+  iframe.setAttribute('id', this.options.id + '-player');
+  iframe.setAttribute('type', 'text/html');
+  iframe.setAttribute('width', '100%');
+  iframe.setAttribute('height', '100%');
+  iframe.setAttribute('frameborder', '0');
+
+  // Get the source.
+  var src = 'http://player.vimeo.com/video/';
+  src += this.mediaFile.id + '?';
+
+  // Add the parameters to the src.
+  src += jQuery.param({
+    'wmode': 'opaque',
+    'api': 1,
+    'player_id': this.options.id + '-player',
+    'title': 0,
+    'byline': 0,
+    'portrait': 0,
+    'autoplay': this.options.autoplay,
+    'loop': this.options.loop
+  });
+
+  // Set the source of the iframe.
+  iframe.setAttribute('src', src);
+
+  // Now register this player when the froogaloop code is loaded.
+  var _this = this;
+  var check = setInterval(function() {
+    if (window.Froogaloop) {
+      clearInterval(check);
+      _this.media = window.Froogaloop(iframe);
+      _this.media.addEvent('ready', function() {
+        _this.onReady();
+      });
+    }
+  }, 200);
+
+  // Trigger that the load has started.
+  this.trigger('loadstart');
+
+  // Return the player.
+  return iframe;
+};
+
+/**
+ * @see minplayer.players.base#onReady
+ */
+minplayer.players.vimeo.prototype.onReady = function(player_id) {
+  // Store the this pointer within this context.
+  var _this = this;
+
+  // Add the other listeners.
+  this.media.addEvent('loadProgress', function(progress) {
+
+    // Set the duration, bytesLoaded, and bytesTotal.
+    _this.duration.set(parseFloat(progress.duration));
+    _this.bytesLoaded.set(progress.bytesLoaded);
+    _this.bytesTotal.set(progress.bytesTotal);
+  });
+
+  this.media.addEvent('playProgress', function(progress) {
+
+    // Set the duration and current time.
+    _this.duration.set(parseFloat(progress.duration));
+    _this.currentTime.set(parseFloat(progress.seconds));
+  });
+
+  this.media.addEvent('play', function() {
+    _this.onPlaying();
+  });
+
+  this.media.addEvent('pause', function() {
+    _this.onPaused();
+  });
+
+  this.media.addEvent('finish', function() {
+    _this.onComplete();
+  });
+
+  minplayer.players.base.prototype.onReady.call(this);
+  this.onLoaded();
+};
+
+/**
+ * Checks to see if this player can be found.
+ * @return {bool} TRUE - Player is found, FALSE - otherwise.
+ */
+minplayer.players.vimeo.prototype.playerFound = function() {
+  var iframe = this.display.find('iframe#' + this.options.id + '-player');
+  return (iframe.length > 0);
+};
+
+/**
+ * @see minplayer.players.base#play
+ */
+minplayer.players.vimeo.prototype.play = function() {
+  minplayer.players.base.prototype.play.call(this);
+  if (this.isReady()) {
+    this.media.api('play');
+  }
+};
+
+/**
+ * @see minplayer.players.base#pause
+ */
+minplayer.players.vimeo.prototype.pause = function() {
+  minplayer.players.base.prototype.pause.call(this);
+  if (this.isReady()) {
+    this.media.api('pause');
+  }
+};
+
+/**
+ * @see minplayer.players.base#stop
+ */
+minplayer.players.vimeo.prototype.stop = function() {
+  minplayer.players.base.prototype.stop.call(this);
+  if (this.isReady()) {
+    this.media.api('unload');
+  }
+};
+
+/**
+ * @see minplayer.players.base#seek
+ */
+minplayer.players.vimeo.prototype.seek = function(pos) {
+  minplayer.players.base.prototype.seek.call(this, pos);
+  if (this.isReady()) {
+    this.media.api('seekTo', pos);
+  }
+};
+
+/**
+ * @see minplayer.players.base#setVolume
+ */
+minplayer.players.vimeo.prototype.setVolume = function(vol) {
+  minplayer.players.base.prototype.setVolume.call(this, vol);
+  if (this.isReady()) {
+    this.volume.set(vol);
+    this.media.api('setVolume', vol);
+  }
+};
+
+/**
+ * @see minplayer.players.base#getVolume
+ */
+minplayer.players.vimeo.prototype.getVolume = function(callback) {
+  var _this = this;
+  this.media.api('getVolume', function(vol) {
+    callback(vol);
+  });
 };
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
@@ -2117,6 +3145,7 @@ minplayer.controllers.base.prototype.getElements = function() {
     pause: null,
     fullscreen: null,
     seek: null,
+    progress: null,
     volume: null,
     timer: null
   });
@@ -2127,31 +3156,34 @@ minplayer.controllers.base.prototype.getElements = function() {
  */
 minplayer.controllers.base.prototype.construct = function() {
 
+  // Set the name of this plugin.
+  this.options.name = 'controller';
+
   // Call the minplayer plugin constructor.
   minplayer.display.prototype.construct.call(this);
 
   // Play or pause the player.
-  function playPause(controller, state) {
+  this.playPause = function(state) {
     var type = state ? 'play' : 'pause';
-    controller.display.trigger(type);
-    controller.setPlayPause(state);
-    if (controller.player) {
-      controller.player[type]();
+    this.display.trigger(type);
+    this.setPlayPause(state);
+    if (this.player) {
+      this.player[type]();
     }
-  }
+  };
 
   // Trigger the controller events.
   if (this.elements.play) {
     this.elements.play.bind('click', {obj: this}, function(event) {
       event.preventDefault();
-      playPause(event.data.obj, true);
+      event.data.obj.playPause(true);
     });
   }
 
   if (this.elements.pause) {
     this.elements.pause.bind('click', {obj: this}, function(event) {
       event.preventDefault();
-      playPause(event.data.obj, false);
+      event.data.obj.playPause(false);
     });
   }
 
@@ -2166,6 +3198,7 @@ minplayer.controllers.base.prototype.construct = function() {
       else {
         _this.elements.player.addClass('fullscreen');
       }
+      _this.trigger('fullscreen', !isFull);
     }).css({'pointer' : 'hand'});
   }
 
@@ -2216,65 +3249,101 @@ minplayer.controllers.base.prototype.setTimeString = function(element, time) {
  */
 minplayer.controllers.base.prototype.setPlayer = function(player) {
   minplayer.display.prototype.setPlayer.call(this, player);
-  player.display.bind('pause', {obj: this}, function(event) {
-    event.data.obj.setPlayPause(true);
-    clearInterval(event.data.obj.interval);
-  });
-  player.display.bind('playing', {obj: this}, function(event) {
-    event.data.obj.setPlayPause(false);
-  });
-  player.display.bind('durationchange', {obj: this}, function(event, data) {
-    event.data.obj.setTimeString('duration', data.duration);
-  });
-  player.display.bind('timeupdate', {obj: this}, function(event, data) {
-    if (!event.data.obj.dragging) {
-      var value = 0;
-      if (data.duration) {
-        value = (data.currentTime / data.duration) * 100;
-      }
 
-      // Update the seek bar if it exists.
-      if (event.data.obj.seekBar) {
-        event.data.obj.seekBar.slider('option', 'value', value);
-      }
+  var _this = this;
 
-      event.data.obj.setTimeString('timer', data.currentTime);
-    }
-  });
+  // If they have a pause button, then bind to the pause event.
+  if (this.elements.pause) {
+    player.bind('pause', {obj: this}, function(event) {
+      event.data.obj.setPlayPause(true);
+    });
+  }
+
+  // If they have a play button, then bind to playing.
+  if (this.elements.play) {
+    player.bind('playing', {obj: this}, function(event) {
+      event.data.obj.setPlayPause(false);
+    });
+  }
+
+  // If they have a duration, then trigger on duration change.
+  if (this.elements.duration) {
+
+    // Bind to the duration change event.
+    player.bind('durationchange', {obj: this}, function(event, data) {
+      event.data.obj.setTimeString('duration', data.duration);
+    });
+
+    // Set the timestring to the duration.
+    player.getDuration(function(duration) {
+      _this.setTimeString('duration', duration);
+    });
+  }
+
+  // If they have a progress, then bind to the progress.
+  if (this.elements.progress) {
+    player.bind('progress', {obj: this}, function(event, data) {
+      var percent = data.total ? (data.loaded / data.total) * 100 : 0;
+      _this.elements.progress.width(percent + '%');
+    });
+  }
+
+  // If they have a seek bar or timer, bind to the timeupdate.
+  if (this.seekBar || this.elements.timer) {
+    player.bind('timeupdate', {obj: this}, function(event, data) {
+      if (!event.data.obj.dragging) {
+        var value = 0;
+        if (data.duration) {
+          value = (data.currentTime / data.duration) * 100;
+        }
+
+        // Update the seek bar if it exists.
+        if (event.data.obj.seekBar) {
+          event.data.obj.seekBar.slider('option', 'value', value);
+        }
+
+        event.data.obj.setTimeString('timer', data.currentTime);
+      }
+    });
+  }
 
   // Register the events for the control bar to control the media.
   if (this.seekBar) {
-    var _this = this;
     this.seekBar.slider({
       start: function(event, ui) {
         _this.dragging = true;
       },
       stop: function(event, ui) {
         _this.dragging = false;
-        var time = (ui.value / 100) * player.getDuration();
-        player.seek(time);
+        player.getDuration(function(duration) {
+          player.seek((ui.value / 100) * duration);
+        });
       },
       slide: function(event, ui) {
-        var time = (ui.value / 100) * player.getDuration();
-        if (!_this.dragging) {
-          player.seek(time);
-        }
-
-        _this.setTimeString('timer', time);
+        player.getDuration(function(duration) {
+          var time = (ui.value / 100) * duration;
+          if (!_this.dragging) {
+            player.seek(time);
+          }
+          _this.setTimeString('timer', time);
+        });
       }
     });
   }
 
-  // Register the volume bar to adjust the player volume.
-  player.setVolume(this.options.volume / 100);
-
   // Setup the volume bar.
   if (this.volumeBar) {
-    this.volumeBar.slider('option', 'value', this.options.volume);
+
+    // Create the slider.
     this.volumeBar.slider({
       slide: function(event, ui) {
         player.setVolume(ui.value / 100);
       }
+    });
+
+    // Set the volume to match that of the player.
+    player.getVolume(function(vol) {
+      _this.volumeBar.slider('option', 'value', (vol * 100));
     });
   }
 };
@@ -2298,11 +3367,23 @@ minplayer.templates.base = function(context, options) {
   minplayer.display.call(this, context, options);
 };
 
-// Extend the plugin prototype.
-var templatesBase = minplayer.templates.base;
-
-/** Derive from minplayer.templates.base. */
+/** Derive from minplayer.display. */
 minplayer.templates.base.prototype = new minplayer.display();
+
+/** Reset the constructor. */
+minplayer.templates.base.prototype.constructor = minplayer.templates.base;
+
+/**
+ * @see minplayer.plugin#construct
+ */
+minplayer.templates.base.prototype.construct = function() {
+
+  // Set the name of this plugin.
+  this.options.name = 'template';
+
+  // Call the minplayer display constructor.
+  minplayer.display.prototype.construct.call(this);
+};
 
 /**
  * @see minplayer.display#getElements

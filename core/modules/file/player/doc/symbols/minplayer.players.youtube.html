@@ -193,6 +193,8 @@ ul.inheritsList
 	
 	<li><a href="../symbols/jQuery.fn.minplayer.html">jQuery.fn.minplayer</a></li>
 	
+	<li><a href="../symbols/minplayer.async.html">minplayer.async</a></li>
+	
 	<li><a href="../symbols/minplayer.compatibility.html">minplayer.compatibility</a></li>
 	
 	<li><a href="../symbols/minplayer.controllers.base.html">minplayer.controllers.base</a></li>
@@ -203,6 +205,8 @@ ul.inheritsList
 	
 	<li><a href="../symbols/minplayer.flags.html">minplayer.flags</a></li>
 	
+	<li><a href="../symbols/minplayer.image.html">minplayer.image</a></li>
+	
 	<li><a href="../symbols/minplayer.player.html">minplayer.player</a></li>
 	
 	<li><a href="../symbols/minplayer.players.base.html">minplayer.players.base</a></li>
@@ -212,6 +216,8 @@ ul.inheritsList
 	<li><a href="../symbols/minplayer.players.html5.html">minplayer.players.html5</a></li>
 	
 	<li><a href="../symbols/minplayer.players.minplayer.html">minplayer.players.minplayer</a></li>
+	
+	<li><a href="../symbols/minplayer.players.vimeo.html">minplayer.players.vimeo</a></li>
 	
 	<li><a href="../symbols/minplayer.players.youtube.html">minplayer.players.youtube</a></li>
 	
@@ -237,10 +243,10 @@ ul.inheritsList
 			<p class="description">
 				
 				<br />Extends
-					<a href="../symbols/minplayer.display.html">minplayer.display</a>.<br />
+					<a href="../symbols/minplayer.players.base.html">minplayer.players.base</a>.<br />
 				
 			
-				The Flash media player class to control the flash fallback.
+				The YouTube media player.
 				
 				
 					<br /><i>Defined in: </i> <a href="../symbols/src/src_minplayer.players.youtube.js.html">minplayer.players.youtube.js</a>.
@@ -262,7 +268,7 @@ ul.inheritsList
 						<td class="attributes">&nbsp;</td>
 						<td class="nameDescription" >
 							<div class="fixedFont">
-								<b><a href="../symbols/minplayer.players.youtube.html#constructor">minplayer.players.youtube</a></b>(context, options, mediaFile)
+								<b><a href="../symbols/minplayer.players.youtube.html#constructor">minplayer.players.youtube</a></b>(context, options, ready)
 							</div>
 							<div class="description"></div>
 						</td>
@@ -311,7 +317,7 @@ ul.inheritsList
 				
 				
 				<dl class="inheritsList">
-				
+				<dt>Fields borrowed from class <a href="../symbols/minplayer.players.base.html">minplayer.players.base</a>: </dt><dd><a href="../symbols/minplayer.players.base.html#mediaFile">mediaFile</a>, <a href="../symbols/minplayer.players.base.html#readyCallback">readyCallback</a></dd>
 				</dl>
 				
 			
@@ -342,15 +348,6 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#construct">construct</a></b>()
-								</div>
-								<div class="description"></div>
-							</td>
-						</tr>
-					
-						<tr>
-							<td class="attributes">&nbsp;</td>
-							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#create">create</a></b>()
 								</div>
 								<div class="description"></div>
@@ -360,7 +357,7 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getBytesLoaded">getBytesLoaded</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getBytesLoaded">getBytesLoaded</a></b>(callback)
 								</div>
 								<div class="description"></div>
 							</td>
@@ -369,7 +366,7 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getBytesTotal">getBytesTotal</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getBytesStart">getBytesStart</a></b>(callback)
 								</div>
 								<div class="description"></div>
 							</td>
@@ -378,7 +375,7 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getCurrentTime">getCurrentTime</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getBytesTotal">getBytesTotal</a></b>(callback)
 								</div>
 								<div class="description"></div>
 							</td>
@@ -387,7 +384,7 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getPlayerDuration">getPlayerDuration</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getCurrentTime">getCurrentTime</a></b>(callback)
 								</div>
 								<div class="description"></div>
 							</td>
@@ -396,9 +393,18 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getPlayerState">getPlayerState</a></b>(playerState)
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getDuration">getDuration</a></b>(callback)
 								</div>
 								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&lt;static&gt; &nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont">minplayer.players.youtube.<b><a href="../symbols/minplayer.players.youtube.html#.getMediaId">getMediaId</a></b>(file)
+								</div>
+								<div class="description">Return the ID for a provided media file.</div>
 							</td>
 						</tr>
 					
@@ -414,9 +420,18 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getVolume">getVolume</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#getVolume">getVolume</a></b>(callback)
 								</div>
 								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#hasPlayLoader">hasPlayLoader</a></b>()
+								</div>
+								<div class="description">Determines if the player should show the playloader.</div>
 							</td>
 						</tr>
 					
@@ -426,6 +441,42 @@ ul.inheritsList
 								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#load">load</a></b>(file)
 								</div>
 								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#onError">onError</a></b>(errorCode)
+								</div>
+								<div class="description">Called when an error occurs.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#onPlayerStateChange">onPlayerStateChange</a></b>(event)
+								</div>
+								<div class="description">Called when the player state changes.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#onQualityChange">onQualityChange</a></b>(newQuality)
+								</div>
+								<div class="description">Called when the player quality changes.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#onReady">onReady</a></b>(event)
+								</div>
+								<div class="description">Called when an error occurs.</div>
 							</td>
 						</tr>
 					
@@ -450,9 +501,19 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#regex">regex</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#playerFound">playerFound</a></b>()
 								</div>
-								<div class="description">Return the Regular Expression to find a YouTube ID.</div>
+								<div class="description">Checks to see if this player can be found.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#register">register</a></b>()
+								</div>
+								<div class="description">Register this youtube player so that multiple players can be present
+on the same page without event collision.</div>
 							</td>
 						</tr>
 					
@@ -462,6 +523,15 @@ ul.inheritsList
 								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#seek">seek</a></b>(pos)
 								</div>
 								<div class="description"></div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.players.youtube.html#setPlayerState">setPlayerState</a></b>(playerState)
+								</div>
+								<div class="description">Translates the player state for the YouTube API player.</div>
 							</td>
 						</tr>
 					
@@ -489,7 +559,7 @@ ul.inheritsList
 				
 				
 				<dl class="inheritsList">
-				<dt>Methods borrowed from class <a href="../symbols/minplayer.display.html">minplayer.display</a>: </dt><dd><a href="../symbols/minplayer.display.html#getElements">getElements</a>, <a href="../symbols/minplayer.display.html#isValid">isValid</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#setPlayer">setPlayer</a></dd>
+				<dt>Methods borrowed from class <a href="../symbols/minplayer.players.base.html">minplayer.players.base</a>: </dt><dd><a href="../symbols/minplayer.players.base.html#clearIntervals">clearIntervals</a>, <a href="../symbols/minplayer.players.base.html#construct">construct</a>, <a href="../symbols/minplayer.players.base.html#getMedia">getMedia</a>, <a href="../symbols/minplayer.players.base.html#isReady">isReady</a>, <a href="../symbols/minplayer.players.base.html#onComplete">onComplete</a>, <a href="../symbols/minplayer.players.base.html#onLoaded">onLoaded</a>, <a href="../symbols/minplayer.players.base.html#onPaused">onPaused</a>, <a href="../symbols/minplayer.players.base.html#onPlaying">onPlaying</a>, <a href="../symbols/minplayer.players.base.html#onWaiting">onWaiting</a>, <a href="../symbols/minplayer.players.base.html#reset">reset</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.display.html">minplayer.display</a>: </dt><dd><a href="../symbols/minplayer.display.html#bind">bind</a>, <a href="../symbols/minplayer.display.html#getElements">getElements</a>, <a href="../symbols/minplayer.display.html#getScaledRect">getScaledRect</a>, <a href="../symbols/minplayer.display.html#isValid">isValid</a>, <a href="../symbols/minplayer.display.html#onResize">onResize</a>, <a href="../symbols/minplayer.display.html#trigger">trigger</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#addPlugin">addPlugin</a>, <a href="../symbols/minplayer.plugin.html#destroy">destroy</a>, <a href="../symbols/minplayer.plugin.html#eachPlugin">eachPlugin</a>, <a href="../symbols/minplayer.plugin.html#getPlugin">getPlugin</a>, <a href="../symbols/minplayer.plugin.html#loadPlugins">loadPlugins</a>, <a href="../symbols/minplayer.plugin.html#setPlayer">setPlayer</a></dd>
 				</dl>
 				
 			
@@ -504,7 +574,7 @@ ul.inheritsList
 				</div>
 				
 				<div class="fixedFont">
-						<b>minplayer.players.youtube</b>(context, options, mediaFile)
+						<b>minplayer.players.youtube</b>(context, options, ready)
 				</div>
 				
 				<div class="description">
@@ -532,10 +602,10 @@ ul.inheritsList
 								<dd>This components options.</dd>
 						
 							<dt>
-								<span class="light fixedFont">{object}</span>  <b>mediaFile</b>
+								<span class="light fixedFont">{function}</span>  <b>ready</b>
 								
 							</dt>
-								<dd>The media file for this player.</dd>
+								<dd>Called when the player is ready.</dd>
 						
 						</dl>
 					
@@ -627,10 +697,10 @@ ul.inheritsList
 							<dt class="heading">Parameters:</dt>
 							
 								<dt>
-									<span class="light fixedFont">{object}</span> <b>file</b>
+									<b>file</b>
 									
 								</dt>
-								<dd>A <a href="../symbols/minplayer.file.html">minplayer.file</a> object.</dd>
+								<dd></dd>
 							
 							</dl>
 						
@@ -651,38 +721,6 @@ ul.inheritsList
 							<dt class="heading">See:</dt>
 							
 								<dd>minplayer.players.base#canPlay</dd>
-							
-							</dl>
-						
-
-					<hr />
-				
-					<a name="construct"> </a>
-					<div class="fixedFont">
-					
-					
-					<b>construct</b>()
-					
-					</div>
-					<div class="description">
-						
-						
-						
-					</div>
-					
-					
-					
-						
-						
-						
-						
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd>minplayer.plugin.construct</dd>
 							
 							</dl>
 						
@@ -731,8 +769,8 @@ ul.inheritsList
 					<a name="getBytesLoaded"> </a>
 					<div class="fixedFont">
 					
-					<span class="light">{number}</span>
-					<b>getBytesLoaded</b>()
+					
+					<b>getBytesLoaded</b>(callback)
 					
 					</div>
 					<div class="description">
@@ -744,16 +782,20 @@ ul.inheritsList
 					
 					
 						
-						
-						
-						
-						
 							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
+							<dt class="heading">Parameters:</dt>
 							
-								<dd><span class="light fixedFont">{number}</span> Returns the bytes loaded from the media.</dd>
+								<dt>
+									<b>callback</b>
+									
+								</dt>
+								<dd></dd>
 							
 							</dl>
+						
+						
+						
+						
 						
 						
 						
@@ -767,11 +809,11 @@ ul.inheritsList
 
 					<hr />
 				
-					<a name="getBytesTotal"> </a>
+					<a name="getBytesStart"> </a>
 					<div class="fixedFont">
 					
-					<span class="light">{number}</span>
-					<b>getBytesTotal</b>()
+					
+					<b>getBytesStart</b>(callback)
 					
 					</div>
 					<div class="description">
@@ -783,16 +825,63 @@ ul.inheritsList
 					
 					
 						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>callback</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
 						
 						
 						
 						
 							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
+							<dt class="heading">See:</dt>
 							
-								<dd><span class="light fixedFont">{number}</span> The total number of bytes of the loaded media.</dd>
+								<dd>minplayer.players.base#getBytesStart.</dd>
 							
 							</dl>
+						
+
+					<hr />
+				
+					<a name="getBytesTotal"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>getBytesTotal</b>(callback)
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>callback</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
 						
 						
 						
@@ -809,86 +898,8 @@ ul.inheritsList
 					<a name="getCurrentTime"> </a>
 					<div class="fixedFont">
 					
-					<span class="light">{number}</span>
-					<b>getCurrentTime</b>()
 					
-					</div>
-					<div class="description">
-						
-						
-						
-					</div>
-					
-					
-					
-						
-						
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{number}</span> The current playhead time.</dd>
-							
-							</dl>
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd>minplayer.players.base#getCurrentTime</dd>
-							
-							</dl>
-						
-
-					<hr />
-				
-					<a name="getPlayerDuration"> </a>
-					<div class="fixedFont">
-					
-					<span class="light">{int}</span>
-					<b>getPlayerDuration</b>()
-					
-					</div>
-					<div class="description">
-						
-						
-						
-					</div>
-					
-					
-					
-						
-						
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">Returns:</dt>
-							
-								<dd><span class="light fixedFont">{int}</span> The player duration.</dd>
-							
-							</dl>
-						
-						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd>minplayer.players.flash#getPlayerDuration.</dd>
-							
-							</dl>
-						
-
-					<hr />
-				
-					<a name="getPlayerState"> </a>
-					<div class="fixedFont">
-					
-					
-					<b>getPlayerState</b>(playerState)
+					<b>getCurrentTime</b>(callback)
 					
 					</div>
 					<div class="description">
@@ -904,7 +915,7 @@ ul.inheritsList
 							<dt class="heading">Parameters:</dt>
 							
 								<dt>
-									<b>playerState</b>
+									<b>callback</b>
 									
 								</dt>
 								<dd></dd>
@@ -914,6 +925,99 @@ ul.inheritsList
 						
 						
 						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">See:</dt>
+							
+								<dd><a href="../symbols/minplayer.players.base.html#getCurrentTime">minplayer.players.base#getCurrentTime</a></dd>
+							
+							</dl>
+						
+
+					<hr />
+				
+					<a name="getDuration"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>getDuration</b>(callback)
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>callback</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">See:</dt>
+							
+								<dd>minplayer.players.flash#getDuration.</dd>
+							
+							</dl>
+						
+
+					<hr />
+				
+					<a name=".getMediaId"> </a>
+					<div class="fixedFont">&lt;static&gt; 
+					
+					<span class="light">{string}</span>
+					<span class="light">minplayer.players.youtube.</span><b>getMediaId</b>(file)
+					
+					</div>
+					<div class="description">
+						Return the ID for a provided media file.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{object}</span> <b>file</b>
+									
+								</dt>
+								<dd>A <a href="../symbols/minplayer.file.html">minplayer.file</a> object.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{string}</span> The ID for the provided media.</dd>
+							
+							</dl>
 						
 						
 						
@@ -962,12 +1066,55 @@ ul.inheritsList
 					<a name="getVolume"> </a>
 					<div class="fixedFont">
 					
-					<span class="light">{number}</span>
-					<b>getVolume</b>()
+					
+					<b>getVolume</b>(callback)
 					
 					</div>
 					<div class="description">
 						
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<b>callback</b>
+									
+								</dt>
+								<dd></dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">See:</dt>
+							
+								<dd><a href="../symbols/minplayer.players.base.html#getVolume">minplayer.players.base#getVolume</a></dd>
+							
+							</dl>
+						
+
+					<hr />
+				
+					<a name="hasPlayLoader"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{bool}</span>
+					<b>hasPlayLoader</b>()
+					
+					</div>
+					<div class="description">
+						Determines if the player should show the playloader.
 						
 						
 					</div>
@@ -982,18 +1129,11 @@ ul.inheritsList
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{number}</span> The volume of the media; 0 to 1.</dd>
+								<dd><span class="light fixedFont">{bool}</span> If this player implements its own playLoader.</dd>
 							
 							</dl>
 						
 						
-						
-							<dl class="detailList">
-							<dt class="heading">See:</dt>
-							
-								<dd><a href="../symbols/minplayer.players.base.html#getVolume">minplayer.players.base#getVolume</a></dd>
-							
-							</dl>
 						
 
 					<hr />
@@ -1037,6 +1177,150 @@ ul.inheritsList
 								<dd><a href="../symbols/minplayer.players.base.html#load">minplayer.players.base#load</a></dd>
 							
 							</dl>
+						
+
+					<hr />
+				
+					<a name="onError"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onError</b>(errorCode)
+					
+					</div>
+					<div class="description">
+						Called when an error occurs.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{string}</span> <b>errorCode</b>
+									
+								</dt>
+								<dd>The error that was triggered.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onPlayerStateChange"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onPlayerStateChange</b>(event)
+					
+					</div>
+					<div class="description">
+						Called when the player state changes.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{object}</span> <b>event</b>
+									
+								</dt>
+								<dd>A JavaScript Event.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onQualityChange"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onQualityChange</b>(newQuality)
+					
+					</div>
+					<div class="description">
+						Called when the player quality changes.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{string}</span> <b>newQuality</b>
+									
+								</dt>
+								<dd>The new quality for the change.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="onReady"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>onReady</b>(event)
+					
+					</div>
+					<div class="description">
+						Called when an error occurs.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{string}</span> <b>event</b>
+									
+								</dt>
+								<dd>The onReady event that was triggered.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
 						
 
 					<hr />
@@ -1105,15 +1389,15 @@ ul.inheritsList
 
 					<hr />
 				
-					<a name="regex"> </a>
+					<a name="playerFound"> </a>
 					<div class="fixedFont">
 					
-					<span class="light">{RegEx}</span>
-					<b>regex</b>()
+					<span class="light">{bool}</span>
+					<b>playerFound</b>()
 					
 					</div>
 					<div class="description">
-						Return the Regular Expression to find a YouTube ID.
+						Checks to see if this player can be found.
 						
 						
 					</div>
@@ -1128,9 +1412,35 @@ ul.inheritsList
 							<dl class="detailList">
 							<dt class="heading">Returns:</dt>
 							
-								<dd><span class="light fixedFont">{RegEx}</span> A regular expression to find a YouTube ID.</dd>
+								<dd><span class="light fixedFont">{bool}</span> TRUE - Player is found, FALSE - otherwise.</dd>
 							
 							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="register"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>register</b>()
+					
+					</div>
+					<div class="description">
+						Register this youtube player so that multiple players can be present
+on the same page without event collision.
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
 						
 						
 						
@@ -1176,6 +1486,42 @@ ul.inheritsList
 								<dd><a href="../symbols/minplayer.players.base.html#seek">minplayer.players.base#seek</a></dd>
 							
 							</dl>
+						
+
+					<hr />
+				
+					<a name="setPlayerState"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>setPlayerState</b>(playerState)
+					
+					</div>
+					<div class="description">
+						Translates the player state for the YouTube API player.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{number}</span> <b>playerState</b>
+									
+								</dt>
+								<dd>The YouTube player state.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
 						
 
 					<hr />
@@ -1267,7 +1613,7 @@ ul.inheritsList
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Tue Jan 17 2012 21:48:50 GMT+0100 (CET)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Fri Feb 10 2012 02:13:36 GMT+0100 (CET)
 		</div>
 	</body>
 </html>
