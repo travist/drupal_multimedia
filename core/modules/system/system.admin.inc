@@ -106,23 +106,6 @@ function system_admin_index() {
 }
 
 /**
- * Menu callback; displays a module's settings page.
- */
-function system_settings_overview() {
-  // Check database setup if necessary
-  if (function_exists('db_check_setup') && empty($_POST)) {
-    db_check_setup();
-  }
-
-  $item = menu_get_item('admin/config');
-  $content = system_admin_menu_block($item);
-
-  $output = theme('admin_block_content', array('content' => $content));
-
-  return $output;
-}
-
-/**
  * Menu callback; displays a listing of all themes.
  */
 function system_themes_page() {
@@ -386,7 +369,7 @@ function system_theme_settings($form, &$form_state, $key = '') {
   // Default settings are defined in theme_get_setting() in includes/theme.inc
   if ($key) {
     $var = 'theme_' . $key . '_settings';
-    $themes = system_rebuild_theme_data();
+    $themes = list_themes();
     $features = $themes[$key]->info['features'];
   }
   else {
@@ -616,7 +599,7 @@ function system_theme_settings_validate($form, &$form_state) {
     }
     else {
       // File upload failed.
-      form_set_error('logo_upload', t('The favicon could not be uploaded.'));
+      form_set_error('favicon_upload', t('The favicon could not be uploaded.'));
     }
   }
 
@@ -3061,7 +3044,7 @@ function system_actions_configure($form, &$form_state, $action = NULL) {
     '#title' => t('Label'),
     '#default_value' => $edit['actions_label'],
     '#maxlength' => '255',
-    '#description' => t('A unique label for this advanced action. This label will be displayed in the interface of modules that integrate with actions, such as Trigger module.'),
+    '#description' => t('A unique label for this advanced action. This label will be displayed in the interface of modules that integrate with actions.'),
     '#weight' => -10
   );
   $action_form = $function . '_form';

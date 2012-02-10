@@ -723,7 +723,7 @@ function _theme_build_registry($theme, $base_theme, $theme_engine) {
  *   names of the themes and the values are objects having the following
  *   properties:
  *   - 'filename': The name of the .info file.
- *   - 'name': The name of the theme.
+ *   - 'name': The machine name of the theme.
  *   - 'status': 1 for enabled, 0 for disabled themes.
  *   - 'info': The contents of the .info file.
  *   - 'stylesheets': A two dimensional array, using the first key for the
@@ -733,7 +733,10 @@ function _theme_build_registry($theme, $base_theme, $theme_engine) {
  *   - 'scripts': An associative array of JavaScripts, using the filename as key
  *     and the complete filepath as value.
  *   - 'engine': The name of the theme engine.
- *   - 'base theme': The name of the base theme.
+ *   - 'base_theme': The name of the base theme.
+ *   - 'base_themes': An ordered array of all the base themes. If the first item
+ *     is NULL, a base theme is missing for this theme.
+ *   - 'sub_themes': An unordered array of sub-themes of this theme.
  */
 function list_themes($refresh = FALSE) {
   $list = &drupal_static(__FUNCTION__, array());
@@ -787,6 +790,47 @@ function list_themes($refresh = FALSE) {
   }
 
   return $list;
+}
+
+/**
+ * Find all the base themes for the specified theme.
+ *
+ * Themes can inherit templates and function implementations from earlier themes.
+ *
+ * @param $themes
+ *   An array of available themes.
+ * @param $key
+ *   The name of the theme whose base we are looking for.
+ * @param $used_keys
+ *   A recursion parameter preventing endless loops.
+ * @return
+ *   Returns an array of all of the theme's ancestors; the first element's value
+ *   will be NULL if an error occurred.
+ */
+function drupal_find_base_themes($themes, $key, $used_keys = array()) {
+  $base_key = $themes[$key]->info['base theme'];
+  // Does the base theme exist?
+  if (!isset($themes[$base_key])) {
+    return array($base_key => NULL);
+  }
+
+  $current_base_theme = array($base_key => $themes[$base_key]->info['name']);
+
+  // Is the base theme itself a child of another theme?
+  if (isset($themes[$base_key]->info['base theme'])) {
+    // Do we already know the base themes of this theme?
+    if (isset($themes[$base_key]->base_themes)) {
+      return $themes[$base_key]->base_themes + $current_base_theme;
+    }
+    // Prevent loops.
+    if (!empty($used_keys[$base_key])) {
+      return array($base_key => NULL);
+    }
+    $used_keys[$base_key] = TRUE;
+    return drupal_find_base_themes($themes, $base_key, $used_keys) + $current_base_theme;
+  }
+  // If we get here, then this is our parent theme.
+  return $current_base_theme;
 }
 
 /**
@@ -1475,6 +1519,66 @@ function theme_disable($theme_list) {
  */
 
 /**
+ * Preprocess variables for theme_datetime().
+ */
+function template_preprocess_datetime(&$variables) {
+  // Format the 'datetime' attribute based on the timestamp.
+  // @see http://www.w3.org/TR/html5-author/the-time-element.html#attr-time-datetime
+  if (!isset($variables['attributes']['datetime']) && isset($variables['timestamp'])) {
+    $variables['attributes']['datetime'] = format_date($variables['timestamp'], 'html_datetime', '', 'UTC');
+  }
+
+  // If no text was provided, try to auto-generate it.
+  if (!isset($variables['text'])) {
+    // Format and use a human-readable version of the timestamp, if any.
+    if (isset($variables['timestamp'])) {
+      $variables['text'] = format_date($variables['timestamp']);
+      $variables['html'] = FALSE;
+    }
+    // Otherwise, use the literal datetime attribute.
+    elseif (isset($variables['attributes']['datetime'])) {
+      $variables['text'] = $variables['attributes']['datetime'];
+      $variables['html'] = FALSE;
+    }
+  }
+}
+
+/**
+ * Returns HTML for a date / time.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *   - timestamp: (optional) A UNIX timestamp for the datetime attribute. If the
+ *     datetime cannot be represented as a UNIX timestamp, use a valid datetime
+ *     attribute value in $variables['attributes']['datetime'].
+ *   - text: (optional) The content to display within the <time> element. Set
+ *     'html' to TRUE if this value is already sanitized for output in HTML.
+ *     Defaults to a human-readable representation of the timestamp value or the
+ *     datetime attribute value using format_date().
+ *     When invoked as #theme or #theme_wrappers of a render element, the
+ *     rendered #children are autoamtically taken over as 'text', unless #text
+ *     is explicitly set.
+ *   - attributes: (optional) An associative array of HTML attributes to apply
+ *     to the <time> element. A datetime attribute in 'attributes' overrides the
+ *     'timestamp'. To create a valid datetime attribute value from a UNIX
+ *     timestamp, use format_date() with one of the predefined 'html_*' formats.
+ *   - html: (optional) Whether 'text' is HTML markup (TRUE) or plain-text
+ *     (FALSE). Defaults to FALSE. For example, to use a SPAN tag within the
+ *     TIME element, this must be set to TRUE, or the SPAN tag will be escaped.
+ *     It is the responsibility of the caller to properly sanitize the value
+ *     contained in 'text' (or within the SPAN tag in aforementioned example).
+ *
+ * @see template_preprocess_datetime()
+ * @see http://www.w3.org/TR/html5-author/the-time-element.html#attr-time-datetime
+ */
+function theme_datetime($variables) {
+  $output = '<time' . drupal_attributes($variables['attributes']) . '>';
+  $output .= !empty($variables['html']) ? $variables['text'] : check_plain($variables['text']);
+  $output .= '</time>';
+  return $output;
+}
+
+/**
  * Returns HTML for status and/or error messages, grouped by type.
  *
  * An invisible heading identifies the messages for assistive technology.
@@ -1543,7 +1647,7 @@ function theme_link($variables) {
  * @param $variables
  *   An associative array containing:
  *   - links: An associative array of links to be themed. The key for each link
- *     is used as its css class. Each link should be itself an array, with the
+ *     is used as its CSS class. Each link should be itself an array, with the
  *     following elements:
  *     - title: The link text.
  *     - href: The link URL. If omitted, the 'title' is shown as a plain text
@@ -2138,6 +2242,49 @@ function theme_progress_bar($variables) {
   $output .= '<div class="percentage">' . $variables['percent'] . '%</div>';
   $output .= '<div class="message">' . $variables['message'] . '</div>';
   $output .= '</div>';
+
+  return $output;
+}
+
+/**
+ * Returns HTML for a meter.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *   - display_value: The textual representation of the meter bar.
+ *   - form: A string specifying one or more forms to which the <meter> element
+ *     belongs separated by spaces.
+ *   - high: A number specifying the range that is considered to be a high
+ *     value.
+ *   - low: A number specifying the range that is considered to be a low value.
+ *   - max: A number specifying the maximum value of the range.
+ *   - min: A number specifying the minimum value of the range.
+ *   - optimum: A number specifying what value is the optimal value for the
+ *     gauge.
+ *   - value: A number specifying the current value of the gauge.
+ *   - percentage: A number specifying the current percentage of the gauge.
+ *   - attributes: Associative array of attributes to be placed in the meter
+ *     tag.
+ */
+function theme_meter($variables) {
+  $attributes = $variables['attributes'];
+
+  foreach (array('form', 'high', 'low', 'max', 'min', 'optimum', 'value') as $attribute) {
+    if (!empty($variables[$attribute])) {
+      // This function was initially designed for the <meter> tag, but due to
+      // the lack of browser and styling support for it, we're currently using
+      // it's attributes as HTML5 data attributes.
+      $attributes['data-' . $attribute] = $variables[$attribute];
+    }
+  }
+
+  $output = '<div' . drupal_attributes($attributes) . '>';
+  $output .= '  <div style="width: '. $variables['percentage'] .'%;" class="foreground"></div>';
+  $output .= "</div>\n";
+
+  if (!empty($variables['display_value'])) {
+    $output .= '<div class="percent">' . $variables['display_value'] . '</div>';
+  }
 
   return $output;
 }

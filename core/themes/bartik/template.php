@@ -20,9 +20,6 @@ function bartik_preprocess_html(&$variables) {
     || !empty($variables['page']['footer_fourthcolumn'])) {
     $variables['classes_array'][] = 'footer-columns';
   }
-
-  // Add conditional stylesheets for IE
-  drupal_add_css(path_to_theme() . '/css/ie.css', array('group' => CSS_THEME, 'browsers' => array('IE' => 'lte IE 7', '!IE' => FALSE), 'preprocess' => FALSE));
 }
 
 /**
@@ -76,8 +73,12 @@ function bartik_process_page(&$variables) {
  * Implements hook_preprocess_maintenance_page().
  */
 function bartik_preprocess_maintenance_page(&$variables) {
+  // By default, site_name is set to Drupal if no db connection is available
+  // or during site installation. Setting site_name to an empty string makes
+  // the site and update pages look cleaner.
+  // @see template_preprocess_maintenance_page
   if (!$variables['db_is_active']) {
-    unset($variables['site_name']);
+    $variables['site_name'] = '';
   }
   drupal_add_css(drupal_get_path('theme', 'bartik') . '/css/maintenance-page.css');
 }

@@ -1806,7 +1806,7 @@ function format_size($size, $langcode = NULL) {
 /**
  * Formats a time interval with the requested granularity.
  *
- * @param $timestamp
+ * @param $interval
  *   The length of the interval in seconds.
  * @param $granularity
  *   How many different units to display in the string.
@@ -1817,7 +1817,7 @@ function format_size($size, $langcode = NULL) {
  * @return
  *   A translated string representation of the interval.
  */
-function format_interval($timestamp, $granularity = 2, $langcode = NULL) {
+function format_interval($interval, $granularity = 2, $langcode = NULL) {
   $units = array(
     '1 year|@count years' => 31536000,
     '1 month|@count months' => 2592000,
@@ -1830,9 +1830,9 @@ function format_interval($timestamp, $granularity = 2, $langcode = NULL) {
   $output = '';
   foreach ($units as $key => $value) {
     $key = explode('|', $key);
-    if ($timestamp >= $value) {
-      $output .= ($output ? ' ' : '') . format_plural(floor($timestamp / $value), $key[0], $key[1], array(), array('langcode' => $langcode));
-      $timestamp %= $value;
+    if ($interval >= $value) {
+      $output .= ($output ? ' ' : '') . format_plural(floor($interval / $value), $key[0], $key[1], array(), array('langcode' => $langcode));
+      $interval %= $value;
       $granularity--;
     }
 
@@ -1850,7 +1850,9 @@ function format_interval($timestamp, $granularity = 2, $langcode = NULL) {
  *   A UNIX timestamp to format.
  * @param $type
  *   (optional) The format to use, one of:
- *   - 'short', 'medium', or 'long' (the corresponding built-in date formats).
+ *   - One of the built-in formats: 'short', 'medium', 'long', 'html_datetime',
+ *     'html_date', 'html_time', 'html_yearless_date', 'html_week',
+ *     'html_month', 'html_year'.
  *   - The name of a date type defined by a module in hook_date_format_types(),
  *     if it's been assigned a format.
  *   - The machine name of an administrator-defined date format.
@@ -1901,6 +1903,34 @@ function format_date($timestamp, $type = 'medium', $format = '', $timezone = NUL
 
     case 'long':
       $format = variable_get('date_format_long', 'l, F j, Y - H:i');
+      break;
+
+    case 'html_datetime':
+      $format = variable_get('date_format_html_datetime', 'Y-m-d\TH:i:sO');
+      break;
+
+    case 'html_date':
+      $format = variable_get('date_format_html_date', 'Y-m-d');
+      break;
+
+    case 'html_time':
+      $format = variable_get('date_format_html_time', 'H:i:s');
+      break;
+
+    case 'html_yearless_date':
+      $format = variable_get('date_format_html_yearless_date', 'm-d');
+      break;
+
+    case 'html_week':
+      $format = variable_get('date_format_html_week', 'Y-\WW');
+      break;
+
+    case 'html_month':
+      $format = variable_get('date_format_html_month', 'Y-m');
+      break;
+
+    case 'html_year':
+      $format = variable_get('date_format_html_year', 'Y');
       break;
 
     case 'custom':
@@ -2141,8 +2171,8 @@ function url($path = NULL, array $options = array()) {
     $path = '';
   }
   elseif (!empty($path) && !$options['alias']) {
-    $language = isset($options['language']) && isset($options['language']->langcode) ? $options['language']->langcode : '';
-    $alias = drupal_get_path_alias($original_path, $language);
+    $langcode = isset($options['language']) && isset($options['language']->langcode) ? $options['language']->langcode : '';
+    $alias = drupal_get_path_alias($original_path, $langcode);
     if ($alias != $original_path) {
       $path = $alias;
     }
@@ -2940,7 +2970,7 @@ function drupal_get_css($css = NULL, $skip_alter = FALSE) {
   foreach ($css as $key => $item) {
     if ($item['type'] == 'file') {
       // If defined, force a unique basename for this file.
-      $basename = isset($item['basename']) ? $item['basename'] : basename($item['data']);
+      $basename = isset($item['basename']) ? $item['basename'] : drupal_basename($item['data']);
       if (isset($previous_item[$basename])) {
         // Remove the previous item that shared the same base name.
         unset($css[$previous_item[$basename]]);
@@ -5314,9 +5344,24 @@ function drupal_system_listing($mask, $directory, $key = 'name', $min_depth = 1)
   // themes as provided by a distribution. It is pristine in the same way that
   // the 'core/modules' directory is pristine for core; users should avoid
   // any modification by using the sites/all or sites/<domain> directories.
+  $profiles = array();
   $profile = drupal_get_profile();
-  if (file_exists("profiles/$profile/$directory")) {
-    $searchdir[] = "profiles/$profile/$directory";
+  // For SimpleTest to be able to test modules packaged together with a
+  // distribution we need to include the profile of the parent site (in which
+  // test runs are triggered).
+  if (drupal_valid_test_ua()) {
+    $testing_profile = variable_get('simpletest_parent_profile', FALSE);
+    if ($testing_profile && $testing_profile != $profile) {
+      $profiles[] = $testing_profile;
+    }
+  }
+  // In case both profile directories contain the same extension, the actual
+  // profile always has precedence.
+  $profiles[] = $profile;
+  foreach ($profiles as $profile) {
+    if (file_exists("profiles/$profile/$directory")) {
+      $searchdir[] = "profiles/$profile/$directory";
+    }
   }
 
   // Always search sites/all/* as well as the global directories.
@@ -5766,8 +5811,11 @@ function drupal_render(&$elements) {
   }
 
   // Try to fetch the element's markup from cache and return.
-  if (isset($elements['#cache']) && $cached_output = drupal_render_cache_get($elements)) {
-    return $cached_output;
+  if (isset($elements['#cache'])) {
+    $cached_output = drupal_render_cache_get($elements);
+    if ($cached_output !== FALSE) {
+      return $cached_output;
+    }
   }
 
   // If #markup is set, ensure #type is set. This allows to specify just #markup
@@ -6717,6 +6765,9 @@ function drupal_common_theme() {
       'render element' => 'elements',
       'template' => 'region',
     ),
+    'datetime' => array(
+      'variables' => array('timestamp' => NULL, 'text' => NULL, 'attributes' => array(), 'html' => FALSE),
+    ),
     'status_messages' => array(
       'variables' => array('display' => NULL),
     ),
@@ -6749,6 +6800,9 @@ function drupal_common_theme() {
     ),
     'table' => array(
       'variables' => array('header' => NULL, 'rows' => NULL, 'attributes' => array(), 'caption' => NULL, 'colgroups' => array(), 'sticky' => TRUE, 'empty' => ''),
+    ),
+    'meter' => array(
+      'variables' => array('display_value' => NULL, 'form' => NULL, 'high' => NULL, 'low' => NULL, 'max' => NULL, 'min' => NULL, 'optimum' => NULL, 'value' => NULL, 'percentage' => NULL, 'attributes' => array()),
     ),
     'tablesort_indicator' => array(
       'variables' => array('style' => NULL),
@@ -6867,6 +6921,9 @@ function drupal_common_theme() {
       'render element' => 'element',
     ),
     'textfield' => array(
+      'render element' => 'element',
+    ),
+    'tel' => array(
       'render element' => 'element',
     ),
     'form' => array(
@@ -7443,6 +7500,8 @@ function drupal_flush_all_caches() {
   // part of registry_rebuild().
   system_rebuild_theme_data();
   drupal_theme_rebuild();
+
+  entity_info_cache_clear();
 
   // @todo D8: Split cache flushing from rebuilding.
   // @see http://drupal.org/node/996236

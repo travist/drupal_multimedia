@@ -272,19 +272,6 @@ class EnableDisableTestCase extends ModuleTestCase {
   }
 
   /**
-   * Tests entity cache after enabling a module with a dependency on an enitity
-   * providing module.
-   *
-   * @see entity_cache_test_watchdog()
-   */
-  function testEntityCache() {
-    module_enable(array('entity_cache_test'));
-    $info = variable_get('entity_cache_test');
-    $this->assertEqual($info['label'], 'Entity Cache Test', 'Entity info label is correct.');
-    $this->assertEqual($info['controller class'], 'DrupalDefaultEntityController', 'Entity controller class info is correct.');
-  }
-
-  /**
    * Disables and uninstalls a module and asserts that it was done correctly.
    *
    * @param $module
@@ -1865,6 +1852,9 @@ class TokenReplaceTestCase extends DrupalWebTestCase {
 
     $generated = token_generate('node', $raw_tokens, array('node' => $node), array('sanitize' => FALSE));
     $this->assertEqual($generated['[node:title]'], $node->title, t('Unsanitized token generated properly.'));
+
+    // Test token replacement when the string contains no tokens.
+    $this->assertEqual(token_replace('No tokens here.'), 'No tokens here.');
   }
 
   /**
@@ -2119,7 +2109,7 @@ class UpdateScriptFunctionalTest extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('update_script_test');
+    parent::setUp(array('update_script_test', 'dblog'));
     $this->update_url = $GLOBALS['base_url'] . '/core/update.php';
     $this->update_user = $this->drupalCreateUser(array('administer software updates'));
   }
@@ -2220,6 +2210,56 @@ class UpdateScriptFunctionalTest extends DrupalWebTestCase {
     $final_theme_data = db_query("SELECT * FROM {system} WHERE type = 'theme' ORDER BY name")->fetchAll();
     $this->assertEqual($original_theme_data, $final_theme_data, t('Visiting update.php does not alter the information about themes stored in the database.'));
   }
+
+  /**
+   * Tests update.php when there are no updates to apply.
+   */
+  function testNoUpdateFunctionality() {
+    // Click through update.php with 'administer software updates' permission.
+    $this->drupalLogin($this->update_user);
+    $this->drupalPost($this->update_url, array(), t('Continue'), array('external' => TRUE));
+    $this->assertText(t('No pending updates.'));
+    $this->assertNoLink('Administration pages');
+    $this->clickLink('Front page');
+    $this->assertResponse(200);
+
+    // Click through update.php with 'access administration pages' permission.
+    $admin_user = $this->drupalCreateUser(array('administer software updates', 'access administration pages'));
+    $this->drupalLogin($admin_user);
+    $this->drupalPost($this->update_url, array(), t('Continue'), array('external' => TRUE));
+    $this->assertText(t('No pending updates.'));
+    $this->clickLink('Administration pages');
+    $this->assertResponse(200);
+  }
+
+  /**
+   * Tests update.php after performing a successful update.
+   */
+  function testSuccessfulUpdateFunctionality() {
+    drupal_set_installed_schema_version('update_script_test', drupal_get_installed_schema_version('update_script_test') - 1);
+    // Click through update.php with 'administer software updates' permission.
+    $this->drupalLogin($this->update_user);
+    $this->drupalPost($this->update_url, array(), t('Continue'), array('external' => TRUE));
+    $this->drupalPost(NULL, array(), t('Apply pending updates'));
+    $this->assertText('Updates were attempted.');
+    $this->assertLink('site');
+    $this->assertNoLink('Administration pages');
+    $this->assertNoLink('logged');
+    $this->clickLink('Front page');
+    $this->assertResponse(200);
+
+    drupal_set_installed_schema_version('update_script_test', drupal_get_installed_schema_version('update_script_test') - 1);
+    // Click through update.php with 'access administration pages' and
+    // 'access site reports' permissions.
+    $admin_user = $this->drupalCreateUser(array('administer software updates', 'access administration pages', 'access site reports'));
+    $this->drupalLogin($admin_user);
+    $this->drupalPost($this->update_url, array(), t('Continue'), array('external' => TRUE));
+    $this->drupalPost(NULL, array(), t('Apply pending updates'));
+    $this->assertText('Updates were attempted.');
+    $this->assertLink('logged');
+    $this->clickLink('Administration pages');
+    $this->assertResponse(200);
+  }
 }
 
 /**
@@ -2278,7 +2318,7 @@ class RetrieveFileTestCase extends DrupalWebTestCase {
   function testFileRetrieving() {
     // Test 404 handling by trying to fetch a randomly named file.
     drupal_mkdir($sourcedir = 'public://' . $this->randomName());
-    $filename = $this->randomName();
+    $filename = 'Файл для тестирования ' . $this->randomName();
     $url = file_create_url($sourcedir . '/' . $filename);
     $retrieved_file = system_retrieve_file($url);
     $this->assertFalse($retrieved_file, t('Non-existent file not fetched.'));
@@ -2286,7 +2326,12 @@ class RetrieveFileTestCase extends DrupalWebTestCase {
     // Actually create that file, download it via HTTP and test the returned path.
     file_put_contents($sourcedir . '/' . $filename, 'testing');
     $retrieved_file = system_retrieve_file($url);
-    $this->assertEqual($retrieved_file, 'public://' . $filename, t('Sane path for downloaded file returned (public:// scheme).'));
+
+    // URLs could not contains characters outside the ASCII set so $filename
+    // has to be encoded.
+    $encoded_filename = rawurlencode($filename);
+
+    $this->assertEqual($retrieved_file, 'public://' . $encoded_filename, t('Sane path for downloaded file returned (public:// scheme).'));
     $this->assertTrue(is_file($retrieved_file), t('Downloaded file does exist (public:// scheme).'));
     $this->assertEqual(filesize($retrieved_file), 7, t('File size of downloaded file is correct (public:// scheme).'));
     file_unmanaged_delete($retrieved_file);
@@ -2294,7 +2339,7 @@ class RetrieveFileTestCase extends DrupalWebTestCase {
     // Test downloading file to a different location.
     drupal_mkdir($targetdir = 'temporary://' . $this->randomName());
     $retrieved_file = system_retrieve_file($url, $targetdir);
-    $this->assertEqual($retrieved_file, "$targetdir/$filename", t('Sane path for downloaded file returned (temporary:// scheme).'));
+    $this->assertEqual($retrieved_file, "$targetdir/$encoded_filename", t('Sane path for downloaded file returned (temporary:// scheme).'));
     $this->assertTrue(is_file($retrieved_file), t('Downloaded file does exist (temporary:// scheme).'));
     $this->assertEqual(filesize($retrieved_file), 7, t('File size of downloaded file is correct (temporary:// scheme).'));
     file_unmanaged_delete($retrieved_file);

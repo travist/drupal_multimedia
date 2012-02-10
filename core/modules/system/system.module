@@ -90,7 +90,7 @@ function system_help($path, $arg) {
       $output .= '<dt>' . t('Configuring basic site settings') . '</dt>';
       $output .= '<dd>' . t('The System module also handles basic configuration options for your site, including <a href="@date-time-settings">Date and time settings</a>, <a href="@file-system">File system settings</a>, <a href="@clean-url">Clean URL support</a>, <a href="@site-info">Site name and other information</a>, and a <a href="@maintenance-mode">Maintenance mode</a> for taking your site temporarily offline.', array('@date-time-settings' => url('admin/config/regional/date-time'), '@file-system' => url('admin/config/media/file-system'), '@clean-url' => url('admin/config/search/clean-urls'), '@site-info' => url('admin/config/system/site-information'), '@maintenance-mode' => url('admin/config/development/maintenance'))) . '</dd>';
       $output .= '<dt>' . t('Configuring actions') . '</dt>';
-      $output .= '<dd>' . t('Actions are individual tasks that the system can do, such as unpublishing a piece of content or banning a user. Modules, such as the <a href="@trigger-help">Trigger module</a>, can fire these actions when certain system events happen; for example, when a new post is added or when a user logs in. Modules may also provide additional actions. Visit the <a href="@actions">Actions page</a> to configure actions.', array('@trigger-help' => url('admin/help/trigger'), '@actions' => url('admin/config/system/actions'))) . '</dd>';
+      $output .= '<dd>' . t('Actions are individual tasks that the system can do, such as unpublishing a piece of content or banning a user. Other modules can fire these actions when certain system events happen; for example, when a new post is added or when a user logs in. Modules may also provide additional actions. Visit the <a href="@actions">Actions page</a> to configure actions.', array('@actions' => url('admin/config/system/actions'))) . '</dd>';
       $output .= '</dl>';
       return $output;
     case 'admin/index':
@@ -135,12 +135,9 @@ function system_help($path, $arg) {
     case 'admin/config/system/actions/manage':
       $output = '';
       $output .= '<p>' . t('There are two types of actions: simple and advanced. Simple actions do not require any additional configuration and are listed here automatically. Advanced actions need to be created and configured before they can be used because they have options that need to be specified; for example, sending an e-mail to a specified address or unpublishing content containing certain words. To create an advanced action, select the action from the drop-down list in the advanced action section below and click the <em>Create</em> button.') . '</p>';
-      if (module_exists('trigger')) {
-        $output .= '<p>' . t('You may proceed to the <a href="@url">Triggers</a> page to assign these actions to system events.', array('@url' => url('admin/structure/trigger'))) . '</p>';
-      }
       return $output;
     case 'admin/config/system/actions/configure':
-      return t('An advanced action offers additional configuration options which may be filled out below. Changing the <em>Description</em> field is recommended in order to better identify the precise action taking place. This description will be displayed in modules such as the Trigger module when assigning actions to system events, so it is best if it is as descriptive as possible (for example, "Send e-mail to Moderation Team" rather than simply "Send e-mail").');
+      return t('An advanced action offers additional configuration options which may be filled out below. Changing the <em>Description</em> field is recommended in order to better identify the precise action taking place.');
     case 'admin/config/people/ip-blocking':
       return '<p>' . t('IP addresses listed here are blocked from your site. Blocked addresses are completely forbidden from accessing the site and instead see a brief message explaining the situation.') . '</p>';
     case 'admin/reports/status':
@@ -366,6 +363,15 @@ function system_element_info() {
     '#autocomplete_path' => FALSE,
     '#process' => array('ajax_process_form'),
     '#theme' => 'textfield',
+    '#theme_wrappers' => array('form_element'),
+  );
+  $types['tel'] = array(
+    '#input' => TRUE,
+    '#size' => 30,
+    '#maxlength' => 128,
+    '#autocomplete_path' => FALSE,
+    '#process' => array('ajax_process_form'),
+    '#theme' => 'tel',
     '#theme_wrappers' => array('form_element'),
   );
   $types['machine_name'] = array(
@@ -2575,7 +2581,7 @@ function _system_rebuild_theme_data() {
   // Now that we've established all our master themes, go back and fill in data
   // for subthemes.
   foreach ($sub_themes as $key) {
-    $themes[$key]->base_themes = system_find_base_themes($themes, $key);
+    $themes[$key]->base_themes = drupal_find_base_themes($themes, $key);
     // Don't proceed if there was a problem with the root base theme.
     if (!current($themes[$key]->base_themes)) {
       continue;
@@ -2668,47 +2674,6 @@ function _system_default_theme_features() {
 }
 
 /**
- * Find all the base themes for the specified theme.
- *
- * Themes can inherit templates and function implementations from earlier themes.
- *
- * @param $themes
- *   An array of available themes.
- * @param $key
- *   The name of the theme whose base we are looking for.
- * @param $used_keys
- *   A recursion parameter preventing endless loops.
- * @return
- *   Returns an array of all of the theme's ancestors; the first element's value
- *   will be NULL if an error occurred.
- */
-function system_find_base_themes($themes, $key, $used_keys = array()) {
-  $base_key = $themes[$key]->info['base theme'];
-  // Does the base theme exist?
-  if (!isset($themes[$base_key])) {
-    return array($base_key => NULL);
-  }
-
-  $current_base_theme = array($base_key => $themes[$base_key]->info['name']);
-
-  // Is the base theme itself a child of another theme?
-  if (isset($themes[$base_key]->info['base theme'])) {
-    // Do we already know the base themes of this theme?
-    if (isset($themes[$base_key]->base_themes)) {
-      return $themes[$base_key]->base_themes + $current_base_theme;
-    }
-    // Prevent loops.
-    if (!empty($used_keys[$base_key])) {
-      return array($base_key => NULL);
-    }
-    $used_keys[$base_key] = TRUE;
-    return system_find_base_themes($themes, $base_key, $used_keys) + $current_base_theme;
-  }
-  // If we get here, then this is our parent theme.
-  return $current_base_theme;
-}
-
-/**
  * Get a list of available regions from a specified theme.
  *
  * @param $theme_key
@@ -2741,8 +2706,8 @@ function system_region_list($theme_key, $show = REGIONS_ALL) {
  * Implements hook_system_info_alter().
  */
 function system_system_info_alter(&$info, $file, $type) {
-  // Remove page-top from the blocks UI since it is reserved for modules to
-  // populate from outside the blocks system.
+  // Remove page-top and page-bottom from the blocks UI since they are reserved for
+  // modules to populate from outside the blocks system.
   if ($type == 'theme') {
     $info['regions_hidden'][] = 'page_top';
     $info['regions_hidden'][] = 'page_bottom';
@@ -2905,7 +2870,18 @@ function confirm_form($form, $question, $path, $description = NULL, $yes = NULL,
 }
 
 /**
- * Determines if the current user is in compact mode.
+ * Determines whether the current user is in compact mode.
+ *
+ * Compact mode shows certain administration pages with less description text,
+ * such as the configuration page and the permissions page.
+ *
+ * Whether the user is in compact mode is determined by a cookie, which is set
+ * for the user by system_admin_compact_page().
+ *
+ * If the user does not have the cookie, the default value is given by the
+ * system variable 'admin_compact_mode', which itself defaults to FALSE. This
+ * does not have a user interface to set it: it is a hidden variable which can
+ * be set in the settings.php file.
  *
  * @return
  *   TRUE when in compact mode, FALSE when in expanded mode.
@@ -3461,12 +3437,12 @@ function system_image_toolkits() {
 function system_retrieve_file($url, $destination = NULL, $managed = FALSE, $replace = FILE_EXISTS_RENAME) {
   $parsed_url = parse_url($url);
   if (!isset($destination)) {
-    $path = file_build_uri(basename($parsed_url['path']));
+    $path = file_build_uri(drupal_basename($parsed_url['path']));
   }
   else {
     if (is_dir(drupal_realpath($destination))) {
       // Prevent URIs with triple slashes when glueing parts together.
-      $path = str_replace('///', '//', "$destination/") . basename($parsed_url['path']);
+      $path = str_replace('///', '//', "$destination/") . drupal_basename($parsed_url['path']);
     }
     else {
       $path = $destination;
@@ -3902,10 +3878,7 @@ function system_date_format_save($date_format, $dfid = 0) {
   }
 
   // Retrieve an array of language objects for enabled languages.
-  $languages = language_list('enabled');
-  // This list is keyed off the value of $language->enabled; we want the ones
-  // that are enabled (value of 1).
-  $languages = $languages[1];
+  $languages = language_list(TRUE);
 
   $locale_format = array();
   $locale_format['type'] = $date_format['type'];

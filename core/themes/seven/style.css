@@ -166,10 +166,6 @@ pre {
   padding: 1px 10px 2px 10px; /* LTR */
   text-decoration: none;
   -moz-border-radius: 0 0 10px 10px;
-  -webkit-border-top-left-radius: 0;
-  -webkit-border-top-right-radius: 0;
-  -webkit-border-bottom-left-radius: 10px;
-  -webkit-border-bottom-right-radius: 10px;
   border-radius: 0 0 10px 10px;
 }
 #skip-link a:hover,
@@ -288,8 +284,6 @@ ul.primary li.active a {
   border-style: solid;
   border-color: #a6a7a2;
   -moz-border-radius: 8px 8px 0 0;
-  -webkit-border-top-left-radius: 8px;
-  -webkit-border-top-right-radius: 8px;
   border-radius: 8px 8px 0 0;
 }
 ul.primary li.active a,
@@ -331,7 +325,6 @@ ul.secondary li.active a,
 ul.secondary li.active a.active {
   padding: 2px 10px;
   -moz-border-radius: 7px;
-  -webkit-border-radius: 7px;
   border-radius: 7px;
 }
 ul.secondary li a:hover,
@@ -368,7 +361,6 @@ ul.secondary li.active a.active {
   width: 80px;
   overflow: hidden;
   -moz-border-radius: 5px;
-  -webkit-border-radius: 5px;
   border-radius: 5px;
 }
 #secondary-links ul.links li a:hover {
@@ -565,7 +557,7 @@ fieldset .fieldset-wrapper {
 fieldset.collapsed {
   background-color: transparent;
 }
-html.js fieldset.collapsed {
+.js fieldset.collapsed {
   border-width: 1px;
   height: auto;
 }
@@ -609,6 +601,7 @@ div.teaser-checkbox .form-item,
 }
 .form-disabled input.form-autocomplete,
 .form-disabled input.form-text,
+.form-disabled input.form-tel,
 .form-disabled input.form-file,
 .form-disabled textarea.form-textarea,
 .form-disabled select.form-select {
@@ -662,7 +655,6 @@ a.button {
   border-right-color: #d2d2d2;
   background: url(images/buttons.png) 0 0 repeat-x;
   -moz-border-radius: 20px;
-  -webkit-border-radius: 20px;
   border-radius: 20px;
 }
 a.button:link,
@@ -696,6 +688,7 @@ input.form-button-disabled:active {
 }
 input.form-autocomplete,
 input.form-text,
+input.form-tel,
 input.form-file,
 textarea.form-textarea,
 select.form-select {
@@ -709,6 +702,7 @@ select.form-select {
   transition: border linear 0.2s, box-shadow linear 0.2s;
 }
 input.form-text:focus,
+input.form-tel:focus,
 input.form-file:focus,
 textarea.form-textarea:focus,
 select.form-select:focus {
@@ -719,10 +713,10 @@ select.form-select:focus {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 8px rgba(220, 220, 220, 0.4);
   outline-color: rgba(0, 116, 189, 0.5);
 }
-html.js input.form-autocomplete {
+.js input.form-autocomplete {
   background-position: 100% 4px;
 }
-html.js input.throbbing {
+.js input.throbbing {
   background-position: 100% -16px;
 }
 ul.action-links {
@@ -1000,6 +994,5 @@ div.add-or-remove-shortcuts {
   background-color: #59a0d8;
   color: #fff;
   -moz-border-radius: 8px;
-  -webkit-border-radius: 8px;
   border-radius: 8px;
 }

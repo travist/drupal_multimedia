@@ -213,11 +213,6 @@ function install_begin_request(&$install_state) {
   // Add any installation parameters passed in via the URL.
   $install_state['parameters'] += $_GET;
 
-  // @todo: remove this testbot compatibility layer once the testbot is fixed.
-  if (isset($_GET['locale'])) {
-    $install_state['parameters']['langcode'] = $_GET['locale'];
-  }
-
   // Validate certain core settings that are used throughout the installation.
   if (!empty($install_state['parameters']['profile'])) {
     $install_state['parameters']['profile'] = preg_replace('/[^a-zA-Z_0-9]/', '', $install_state['parameters']['profile']);
@@ -277,7 +272,7 @@ function install_begin_request(&$install_state) {
   // because any data put in the cache during the installer is inherently
   // suspect, due to the fact that Drupal is not fully set up yet.
   require_once DRUPAL_ROOT . '/core/includes/cache.inc';
-  $conf['cache_default_class'] = 'Drupal\\Cache\\InstallBackend';
+  $conf['cache_default_class'] = 'Drupal\Core\Cache\InstallBackend';
 
   // Prepare for themed output. We need to run this at the beginning of the
   // page request to avoid a different theme accidentally getting set. (We also
@@ -1159,10 +1154,21 @@ function install_find_translations() {
 
 /**
  * Find installer translations either for a specific langcode or all languages.
+ *
+ * @param $langcode
+ *   (optional) The language code corresponding to the language for which we
+ *   want to find translation files. If omitted, information on all available
+ *   files will be returned.
+ *
+ * @return
+ *   An associative array of file information objects keyed by file URIs as
+ *   returned by file_scan_directory().
+ *
+ * @see file_scan_directory()
  */
 function install_find_translation_files($langcode = NULL) {
   $directory = variable_get('locale_translate_file_directory', conf_path() . '/files/translations');
-  $files = file_scan_directory($directory, '!install\.' . (!empty($langcode) ? '\.' . preg_quote($langcode, '!') : '[^\.]+') . '\.po$!', array('recurse' => FALSE));
+  $files = file_scan_directory($directory, '!install\.' . (!empty($langcode) ? preg_quote($langcode, '!') : '[^\.]+') . '\.po$!', array('recurse' => FALSE));
   return $files;
 }
 

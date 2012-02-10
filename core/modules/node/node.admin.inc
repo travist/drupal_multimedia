@@ -104,14 +104,18 @@ function node_filters() {
     ) + node_type_get_names(),
   );
 
-  // Language filter if there is a list of languages
-  if ($languages = module_invoke('locale', 'language_list')) {
-    $languages = array(LANGUAGE_NONE => t('Language neutral')) + $languages;
+  // Language filter if the site is multilingual.
+  if (language_multilingual()) {
+    $languages = language_list(TRUE);
+    $language_options = array(LANGUAGE_NONE => t('- None -'));
+    foreach ($languages as $langcode => $language) {
+      $language_options[$langcode] = $language->name;
+    }
     $filters['language'] = array(
       'title' => t('language'),
       'options' => array(
-        '[any]' => t('any'),
-      ) + $languages,
+        '[any]' => t('- Any -'),
+      ) + $language_options,
     );
   }
   return $filters;
@@ -169,7 +173,7 @@ function node_filter_form() {
       $value = $value->name;
     }
     elseif ($type == 'language') {
-      $value = $value == LANGUAGE_NONE ? t('Language neutral') : module_invoke('locale', 'language_name', $value);
+      $value = language_name($value);
     }
     else {
       $value = $filters[$type]['options'][$value];
@@ -442,7 +446,7 @@ function node_admin_nodes() {
     'changed' => array('data' => t('Updated'), 'field' => 'n.changed', 'sort' => 'desc')
   );
   if ($multilanguage) {
-    $header['language'] = array('data' => t('Language'), 'field' => 'n.language');
+    $header['language_name'] = array('data' => t('Language'), 'field' => 'n.language');
   }
   $header['operations'] = array('data' => t('Operations'));
 
@@ -494,12 +498,7 @@ function node_admin_nodes() {
       'changed' => format_date($node->changed, 'short'),
     );
     if ($multilanguage) {
-      if ($node->language == LANGUAGE_NONE || isset($languages[$node->language])) {
-        $options[$node->nid]['language'] = $node->language == LANGUAGE_NONE ? t('Language neutral') : $languages[$node->language]->name;
-      }
-      else {
-        $options[$node->nid]['language'] = t('Undefined language (@langcode)', array('@langcode' => $node->language));
-      }
+      $options[$node->nid]['language_name'] = language_name($node->language);
     }
     // Build a list of all the accessible operations for the current node.
     $operations = array();

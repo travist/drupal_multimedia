@@ -609,7 +609,11 @@ function hook_menu_get_item_alter(&$router_item, $path, $original_map) {
  * @endcode
  * This 'abc' object will then be passed into the callback functions defined
  * for the menu item, such as the page callback function mymodule_abc_edit()
- * to replace the integer 1 in the argument array.
+ * to replace the integer 1 in the argument array. Note that a load function
+ * should return FALSE when it is unable to provide a loadable object. For
+ * example, the node_load() function for the 'node/%node/edit' menu item will
+ * return FALSE for the path 'node/999/edit' if a node with a node ID of 999
+ * does not exist. The menu routing system will return a 404 error in this case.
  *
  * You can also define a %wildcard_to_arg() function (for the example menu
  * entry above this would be 'mymodule_abc_to_arg()'). The _to_arg() function
@@ -786,7 +790,8 @@ function hook_menu_get_item_alter(&$router_item, $path, $original_map) {
  *       "default" task, which should display the same page as the parent item.
  *     If the "type" element is omitted, MENU_NORMAL_ITEM is assumed.
  *   - "options": An array of options to be passed to l() when generating a link
- *     from this menu item.
+ *     from this menu item. Note that the "options" parameter has no effect on
+ *     MENU_LOCAL_TASK, MENU_DEFAULT_LOCAL_TASK, and MENU_LOCAL_ACTION items.
  *
  * For a detailed usage example, see page_example.module.
  * For comprehensive documentation on the menu system, see
@@ -2874,13 +2879,10 @@ function hook_install() {
  *
  * A good rule of thumb is to remove updates older than two major releases of
  * Drupal. See hook_update_last_removed() to notify Drupal about the removals.
+ * For further information about releases and release numbers see:
+ * @link http://drupal.org/node/711070 Maintaining a drupal.org project with Git @endlink
  *
  * Never renumber update functions.
- *
- * Further information about releases and release numbers:
- * - @link http://drupal.org/handbook/version-info http://drupal.org/handbook/version-info @endlink
- * - @link http://drupal.org/node/93999 http://drupal.org/node/93999 @endlink (Overview of contributions branches and tags)
- * - @link http://drupal.org/handbook/cvs/releases http://drupal.org/handbook/cvs/releases @endlink
  *
  * Implementations of this hook should be placed in a mymodule.install file in
  * the same directory as mymodule.module. Drupal core's updates are implemented
@@ -3384,9 +3386,7 @@ function hook_file_mimetype_mapping_alter(&$mapping) {
  * Declares information about actions.
  *
  * Any module can define actions, and then call actions_do() to make those
- * actions happen in response to events. The trigger module provides a user
- * interface for associating actions with module-defined triggers, and it makes
- * sure the core triggers fire off actions when their events happen.
+ * actions happen in response to events.
  *
  * An action consists of two or three parts:
  * - an action definition (returned by this hook)
@@ -3417,14 +3417,9 @@ function hook_file_mimetype_mapping_alter(&$mapping) {
  *     declare support for any trigger by returning array('any') for this value.
  *   - 'behavior': (optional) A machine-readable array of behaviors of this
  *     action, used to signal additionally required actions that may need to be
- *     triggered. Currently recognized behaviors by Trigger module:
- *     - 'changes_property': If an action with this behavior is assigned to a
- *       trigger other than a "presave" hook, any save actions also assigned to
- *       this trigger are moved later in the list. If no save action is present,
- *       one will be added.
- *       Modules that are processing actions (like Trigger module) should take
- *       special care for the "presave" hook, in which case a dependent "save"
- *       action should NOT be invoked.
+ *     triggered. Modules that are processing actions should take special care
+ *     for the "presave" hook, in which case a dependent "save" action should
+ *     NOT be invoked.
  *
  * @ingroup actions
  */
@@ -3470,8 +3465,6 @@ function hook_actions_delete($aid) {
  *
  * Called by actions_list() to allow modules to alter the return values from
  * implementations of hook_action_info().
- *
- * @see trigger_example_action_info_alter()
  */
 function hook_action_info_alter(&$actions) {
   $actions['node_unpublish_action']['label'] = t('Unpublish and remove from public view.');

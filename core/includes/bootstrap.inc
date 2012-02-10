@@ -1955,7 +1955,7 @@ function drupal_block_denied($ip) {
  */
 function drupal_random_bytes($count)  {
   // $random_state does not use drupal_static as it stores random bytes.
-  static $random_state, $bytes;
+  static $random_state, $bytes, $php_compatible;
   // Initialize on the first call. The contents of $_SERVER includes a mix of
   // user-specific and system information that varies a little with each page.
   if (!isset($random_state)) {
@@ -1967,6 +1967,11 @@ function drupal_random_bytes($count)  {
     $bytes = '';
   }
   if (strlen($bytes) < $count) {
+    // PHP versions prior 5.3.4 experienced openssl_random_pseudo_bytes()
+    // locking on Windows and rendered it unusable.
+    if (!isset($php_compatible)) {
+      $php_compatible = version_compare(PHP_VERSION, '5.3.4', '>=');
+    }
     // /dev/urandom is available on many *nix systems and is considered the
     // best commonly available pseudo-random source.
     if ($fh = @fopen('/dev/urandom', 'rb')) {
@@ -1975,6 +1980,11 @@ function drupal_random_bytes($count)  {
       // that much so as to speed any additional invocations.
       $bytes .= fread($fh, max(4096, $count));
       fclose($fh);
+    }
+    // openssl_random_pseudo_bytes() will find entropy in a system-dependent
+    // way.
+    elseif ($php_compatible && function_exists('openssl_random_pseudo_bytes')) {
+      $bytes .= openssl_random_pseudo_bytes($count - strlen($bytes));
     }
     // If /dev/urandom is not available or returns no bytes, this loop will
     // generate a good set of pseudo-random bytes on any system.
@@ -2292,8 +2302,8 @@ function _drupal_bootstrap_configuration() {
 
   // Register explicit vendor namespaces.
   $loader->registerNamespaces(array(
-    // All Symfony-borrowed code lives in /core/includes/Symfony.
-    'Symfony' => DRUPAL_ROOT . '/core/includes',
+    // All Symfony-borrowed code lives in /core/vendor/Symfony.
+    'Symfony' => DRUPAL_ROOT . '/core/vendor',
   ));
   // Register the Drupal namespace for classes in core as a fallback.
   // This allows to register additional namespaces within the Drupal namespace
@@ -2302,8 +2312,8 @@ function _drupal_bootstrap_configuration() {
   // namespace match based on a string comparison. It further allows modules to
   // register/overload namespaces in Drupal core.
   $loader->registerNamespaceFallbacks(array(
-    // All Drupal-namespaced code in core lives in /core/includes/Drupal.
-    'Drupal' => DRUPAL_ROOT . '/core/includes',
+    // All Drupal-namespaced code in core lives in /core/lib/Drupal.
+    'Drupal' => DRUPAL_ROOT . '/core/lib',
   ));
 }
 
@@ -2652,53 +2662,80 @@ function language_types() {
 }
 
 /**
- * Returns a list of installed languages, indexed by the specified key.
+ * Returns a list of configured languages.
  *
- * @param $field
- *   (optional) The field to index the list with.
+ * @param $only_enabled
+ *   (optional) Whether to return only enabled languages.
  *
  * @return
- *   An associative array, keyed on the values of $field.
- *   - If $field is 'weight' or 'enabled', the array is nested, with the outer
- *     array's values each being associative arrays with language codes as
- *     keys and language objects as values.
- *   - For all other values of $field, the array is only one level deep, and
- *     the array's values are language objects.
+ *   An associative array of languages, keyed by the language code, ordered by
+ *   weight ascending and name ascending.
  */
-function language_list($field = 'langcode') {
+function language_list($only_enabled = FALSE) {
   $languages = &drupal_static(__FUNCTION__);
-  // Init language list
+  // Initialize master language list.
   if (!isset($languages)) {
+    // Initialize local language list caches.
+    $languages = array('all' => array(), 'enabled' => array());
+
+    // Fill in master language list based on current configuration.
     $default = language_default();
     if (language_multilingual() || module_exists('language')) {
-      $languages['langcode'] = db_query('SELECT * FROM {language} ORDER BY weight ASC, name ASC')->fetchAllAssoc('langcode');
+      // Use language module configuration if available.
+      $languages['all'] = db_query('SELECT * FROM {language} ORDER BY weight ASC, name ASC')->fetchAllAssoc('langcode');
     }
     else {
-      // No locale module, so use the default language only.
-      $languages['langcode'][$default->langcode] = $default;
+      // No language module, so use the default language only.
+      $languages['all'][$default->langcode] = $default;
     }
 
-    // Initialize default property so callers have an easy reference and
-    // can save the same object without data loss.
-    foreach ($languages['langcode'] as $langcode => $language) {
-      $languages['langcode'][$langcode]->default = ($langcode == $default->langcode);
-    }
-  }
-
-  // Return the array indexed by the right field
-  if (!isset($languages[$field])) {
-    $languages[$field] = array();
-    foreach ($languages['langcode'] as $lang) {
-      // Some values should be collected into an array
-      if (in_array($field, array('enabled', 'weight'))) {
-        $languages[$field][$lang->$field][$lang->langcode] = $lang;
-      }
-      else {
-        $languages[$field][$lang->$field] = $lang;
+    // Initialize default property so callers have an easy reference and can
+    // save the same object without data loss. Also fill in the filtered list
+    // of enabled languages only.
+    foreach ($languages['all'] as $langcode => $language) {
+      $languages['all'][$langcode]->default = ($langcode == $default->langcode);
+      if ($language->enabled) {
+        $languages['enabled'][$langcode] = $languages['all'][$langcode];
       }
     }
   }
-  return $languages[$field];
+
+  return $only_enabled ? $languages['enabled'] : $languages['all'];
+}
+
+/**
+ * Loads a language object from the database.
+ *
+ * @param $langcode
+ *   The language code.
+ *
+ * @return
+ *   A fully-populated language object or FALSE.
+ */
+function language_load($langcode) {
+  $languages = language_list();
+  return isset($languages[$langcode]) ? $languages[$langcode] : FALSE;
+}
+
+/**
+ * Produced the printed name for a language for display.
+ *
+ * @param $langcode
+ *   The language code.
+ *
+ * @return
+ *   The printed name of the language.
+ */
+function language_name($langcode) {
+  if ($langcode == LANGUAGE_NONE) {
+    return t('None');
+  }
+
+  if ($language = language_load($langcode)) {
+    return $language->name;
+  }
+
+  return t('Unknown (@langcode)', array('@langcode' => $langcode));
 }
 
 /**
@@ -2708,16 +2745,13 @@ function language_list($field = 'langcode') {
  *   A language object.
  */
 function language_default() {
-  $default = variable_get(
-    'language_default',
-    (object) array(
-      'langcode' => 'en',
-      'name' => 'English',
-      'direction' => 0,
-      'enabled' => 1,
-      'weight' => 0,
-    )
-  );
+  $default = variable_get('language_default', (object) array(
+    'langcode' => 'en',
+    'name' => 'English',
+    'direction' => 0,
+    'enabled' => 1,
+    'weight' => 0,
+  ));
   $default->default = TRUE;
   return $default;
 }
@@ -3021,7 +3055,7 @@ function drupal_get_complete_schema($rebuild = FALSE) {
  */
 function drupal_classloader() {
   // Include the Symfony ClassLoader for loading PSR-0-compatible classes.
-  require_once DRUPAL_ROOT . '/core/includes/Symfony/Component/ClassLoader/UniversalClassLoader.php';
+  require_once DRUPAL_ROOT . '/core/vendor/Symfony/Component/ClassLoader/UniversalClassLoader.php';
 
   // By default, use the UniversalClassLoader which is best for development,
   // as it does not break when code is moved on the file system. However, as it
@@ -3033,7 +3067,7 @@ function drupal_classloader() {
     switch (variable_get('autoloader_mode', 'default')) {
       case 'apc':
         if (function_exists('apc_store')) {
-          require_once DRUPAL_ROOT . '/core/includes/Symfony/Component/ClassLoader/ApcUniversalClassLoader.php';
+          require_once DRUPAL_ROOT . '/core/vendor/Symfony/Component/ClassLoader/ApcUniversalClassLoader.php';
           $loader = new ApcUniversalClassLoader('drupal.' . $GLOBALS['drupal_hash_salt']);
           break;
         }
@@ -3204,29 +3238,29 @@ function registry_update() {
  *
  * Example:
  * @code
- * function language_list($field = 'langcode') {
- *   $languages = &drupal_static(__FUNCTION__);
- *   if (!isset($languages)) {
+ * function example_list($field = 'default') {
+ *   $examples = &drupal_static(__FUNCTION__);
+ *   if (!isset($examples)) {
  *     // If this function is being called for the first time after a reset,
  *     // query the database and execute any other code needed to retrieve
- *     // information about the supported languages.
+ *     // information.
  *     ...
  *   }
- *   if (!isset($languages[$field])) {
+ *   if (!isset($examples[$field])) {
  *     // If this function is being called for the first time for a particular
  *     // index field, then execute code needed to index the information already
- *     // available in $languages by the desired field.
+ *     // available in $examples by the desired field.
  *     ...
  *   }
  *   // Subsequent invocations of this function for a particular index field
  *   // skip the above two code blocks and quickly return the already indexed
  *   // information.
- *   return $languages[$field];
+ *   return $examples[$field];
  * }
- * function locale_translate_overview_screen() {
- *   // When building the content for the translations overview page, make
- *   // sure to get completely fresh information about the supported languages.
- *   drupal_static_reset('language_list');
+ * function examples_admin_overview() {
+ *   // When building the content for the overview page, make sure to get
+ *   // completely fresh information.
+ *   drupal_static_reset('example_list');
  *   ...
  * }
  * @endcode
