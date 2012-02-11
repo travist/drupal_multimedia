@@ -141,7 +141,7 @@ function file_library_info() {
       'title' => 'Media Player',
       'version' => '0.1',
       'js' => array(
-        $path . '/bin/minplayer.player.compressed.js' => array('group' => JS_LIBRARY)
+        $path . '/bin/minplayer.compressed.js' => array('group' => JS_LIBRARY)
       ),
       'dependencies' => array(
         array('system', 'ui.slider')
@@ -156,8 +156,8 @@ function file_library_info() {
         $path . '/src/minplayer.async.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.plugin.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.display.js' => array('group' => JS_LIBRARY),
+        $path . '/src/minplayer.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.image.js' => array('group' => JS_LIBRARY),
-        $path . '/src/minplayer.player.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.file.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.playLoader.base.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.players.base.js' => array('group' => JS_LIBRARY),

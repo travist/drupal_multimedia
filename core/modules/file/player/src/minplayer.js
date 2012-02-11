@@ -1,6 +1,3 @@
-/** The minplayer namespace. */
-var minplayer = minplayer || {};
-
 // Add a way to instanciate using jQuery prototype.
 if (!jQuery.fn.minplayer) {
 
@@ -15,7 +12,7 @@ if (!jQuery.fn.minplayer) {
   jQuery.fn.minplayer = function(options) {
     return jQuery(this).each(function() {
       if (!minplayer.plugin.instances[options.id]) {
-        new minplayer.player(jQuery(this), options);
+        new minplayer(jQuery(this), options);
       }
     });
   };
@@ -41,7 +38,7 @@ if (!jQuery.fn.minplayer) {
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
  */
-minplayer.player = function(context, options) {
+minplayer = jQuery.extend(function(context, options) {
 
   // Make sure we provide default options...
   options = jQuery.extend({
@@ -64,22 +61,19 @@ minplayer.player = function(context, options) {
   }, options);
 
   // Derive from display
-  minplayer.display.call(this, context, options);
-};
+  minplayer.display.call(this, 'player', context, options);
+}, minplayer);
 
 /** Derive from minplayer.display. */
-minplayer.player.prototype = new minplayer.display();
+minplayer.prototype = new minplayer.display();
 
 /** Reset the constructor. */
-minplayer.player.prototype.constructor = minplayer.player;
+minplayer.prototype.constructor = minplayer;
 
 /**
  * @see minplayer.plugin.construct
  */
-minplayer.player.prototype.construct = function() {
-
-  // Set the name of this plugin.
-  this.options.name = 'player';
+minplayer.prototype.construct = function() {
 
   // Call the minplayer display constructor.
   minplayer.display.prototype.construct.call(this);
@@ -92,6 +86,9 @@ minplayer.player.prototype.construct = function() {
 
   // Now load these files.
   this.load(this.getFiles());
+
+  // We are now ready.
+  this.ready();
 };
 
 /**
@@ -99,7 +96,7 @@ minplayer.player.prototype.construct = function() {
  *
  * @param {string} error The error to display on the player.
  */
-minplayer.player.prototype.error = function(error) {
+minplayer.prototype.error = function(error) {
   if (this.elements.error) {
 
     // Set the error text.
@@ -116,7 +113,7 @@ minplayer.player.prototype.error = function(error) {
 /**
  * Adds key events to the player.
  */
-minplayer.player.prototype.addKeyEvents = function() {
+minplayer.prototype.addKeyEvents = function() {
 
   // Bind keyup to the current window.
   jQuery(window).bind('keyup', {obj: this}, function(event) {
@@ -133,7 +130,7 @@ minplayer.player.prototype.addKeyEvents = function() {
  *
  * @return {array} All the media files for this player.
  */
-minplayer.player.prototype.getFiles = function() {
+minplayer.prototype.getFiles = function() {
   var files = [];
   var mediaSrc = null;
 
@@ -160,7 +157,7 @@ minplayer.player.prototype.getFiles = function() {
  * @param {array} files An array of files to chose from.
  * @return {object} The best media file to play in the current browser.
  */
-minplayer.player.prototype.getMediaFile = function(files) {
+minplayer.prototype.getMediaFile = function(files) {
 
   // If there are no files then return null.
   if (!files) {
@@ -201,11 +198,47 @@ minplayer.player.prototype.getMediaFile = function(files) {
 };
 
 /**
+ * Called when the player initializes.
+ */
+minplayer.prototype.initialize = function() {
+
+  // Iterate through each plugin.
+  var _this = this;
+  this.eachPlugin(function(name, plugin) {
+
+    // Bind to the error event.
+    plugin.bind('error', function(event, data) {
+      _this.error(data);
+    });
+
+    // Bind to the fullscreen event.
+    plugin.bind('fullscreen', function(event, data) {
+      _this.resize();
+    });
+  });
+
+  // If the media exists.
+  if (this.media) {
+
+    // Copy over all functions.
+    for (var name in this.media) {
+      var prop = this.media[name];
+      if (typeof prop == 'function' && !this[name]) {
+        this[name] = prop;
+      }
+    }
+
+    // Get the media plugin.
+    this.media.load();
+  }
+};
+
+/**
  * Load a set of files or a single file for the media player.
  *
  * @param {array} files An array of files to chose from to load.
  */
-minplayer.player.prototype.load = function(files) {
+minplayer.prototype.load = function(files) {
 
   // Set the id and class.
   var id = '', pClass = '';
@@ -232,141 +265,44 @@ minplayer.player.prototype.load = function(files) {
   var player = this.options.file.player.toString();
 
   // If there isn't media or if the players are different.
-  if (!this.player || (player !== this.currentPlayer)) {
+  if (!this.media || (player !== this.currentPlayer)) {
 
     // Set the current media player.
     this.currentPlayer = player;
 
-    // The display for this media player.
-    var display = this.elements.display;
-
     // Do nothing if we don't have a display.
-    if (!display) {
+    if (!this.elements.display) {
       this.error('No media display found.');
       return;
     }
 
     // If the media exists, then destroy it.
-    if (this.player) {
-      this.player.destory();
+    if (this.media) {
+      this.media.destory();
     }
 
     // Get the class name and create the new player.
     pClass = minplayer.players[this.options.file.player];
 
     // Create the new media player.
-    var _this = this;
-    this.player = new pClass(display, this.options, function(player) {
-
-      // Iterate through each plugin.
-      _this.eachPlugin(function(plugin) {
-
-        // Set the player.
-        plugin.setPlayer(player);
-
-        // Bind to the error event.
-        plugin.bind('error', function(event, data) {
-          _this.error(data);
-        });
-
-        // Bind to the fullscreen event.
-        plugin.bind('fullscreen', function(event, data) {
-          _this.resize();
-        });
-      });
-
-      // Now load this media.
-      player.load();
-    });
+    this.media = new pClass(this.elements.display, this.options);
   }
 
   // If the media object already exists...
-  else if (this.player) {
+  else if (this.media) {
 
     // Now load the different media file.
-    this.player.load(this.options.file);
+    this.media.load(this.options.file);
   }
 };
 
 /**
  * Called when the player is resized.
  */
-minplayer.player.prototype.resize = function() {
+minplayer.prototype.resize = function() {
 
   // Call onRezie for each plugin.
-  this.eachPlugin(function(plugin) {
+  this.eachPlugin(function(name, plugin) {
     plugin.onResize();
   });
-};
-
-/**
- * Play the currently loaded media file.  Use load first to load a
- * media file into the media player.
- */
-minplayer.player.prototype.play = function() {
-  if (this.player) {
-    this.player.play();
-  }
-};
-
-/**
- * Pause the media.
- */
-minplayer.player.prototype.pause = function() {
-  if (this.player) {
-    this.player.pause();
-  }
-};
-
-/**
- * Stop the media.
- */
-minplayer.player.prototype.stop = function() {
-  if (this.player) {
-    this.player.stop();
-  }
-};
-
-/**
- * Seek the media to the provided position.
- *
- * @param {number} pos The position to seek.  0 to 1.
- */
-minplayer.player.prototype.seek = function(pos) {
-  if (this.player) {
-    this.player.seek(pos);
-  }
-};
-
-/**
- * Set the volume of the media being played.
- *
- * @param {number} vol The volume to set.  0 to 1.
- */
-minplayer.player.prototype.setVolume = function(vol) {
-  if (this.player) {
-    this.player.setVolume(vol);
-  }
-};
-
-/**
- * Get the current volume setting.
- *
- * @param {function} callback The callback that is called when the volume
- * is known.
- * @return {number} The current volume level. 0 to 1.
- */
-minplayer.player.prototype.getVolume = function(callback) {
-  return this.player ? this.player.getVolume(callback) : 0;
-};
-
-/**
- * Get the current media duration.
- *
- * @param {function} callback The callback that is called when the duration
- * is known.
- * @return {number} The current media duration.
- */
-minplayer.player.prototype.getDuration = function(callback) {
-  return this.player ? this.player.getDuration(callback) : 0;
 };

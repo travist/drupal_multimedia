@@ -11,12 +11,11 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {function} ready Called when the player is ready.
  */
-minplayer.players.flash = function(context, options, ready) {
+minplayer.players.flash = function(context, options) {
 
   // Derive from players base.
-  minplayer.players.base.call(this, context, options, ready);
+  minplayer.players.base.call(this, context, options);
 };
 
 /** Derive from minplayer.players.base. */
@@ -120,10 +119,10 @@ minplayer.players.flash.prototype.playerFound = function() {
 };
 
 /**
- * @see minplayer.players.base#getMedia
+ * @see minplayer.players.base#getPlayer
  * @return {object} The media player object.
  */
-minplayer.players.flash.prototype.getMedia = function() {
+minplayer.players.flash.prototype.getPlayer = function() {
   // IE needs the object, everyone else just needs embed.
   var object = jQuery.browser.msie ? 'object' : 'embed';
   return jQuery(object, this.display).eq(0)[0];

@@ -11,12 +11,11 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {function} ready Called when the player is ready.
  */
-minplayer.players.vimeo = function(context, options, ready) {
+minplayer.players.vimeo = function(context, options) {
 
   // Derive from players base.
-  minplayer.players.base.call(this, context, options, ready);
+  minplayer.players.base.call(this, context, options);
 };
 
 /** Derive from minplayer.players.base. */
@@ -118,8 +117,8 @@ minplayer.players.vimeo.prototype.create = function() {
   var check = setInterval(function() {
     if (window.Froogaloop) {
       clearInterval(check);
-      _this.media = window.Froogaloop(iframe);
-      _this.media.addEvent('ready', function() {
+      _this.player = window.Froogaloop(iframe);
+      _this.player.addEvent('ready', function() {
         _this.onReady();
       });
     }
@@ -140,7 +139,7 @@ minplayer.players.vimeo.prototype.onReady = function(player_id) {
   var _this = this;
 
   // Add the other listeners.
-  this.media.addEvent('loadProgress', function(progress) {
+  this.player.addEvent('loadProgress', function(progress) {
 
     // Set the duration, bytesLoaded, and bytesTotal.
     _this.duration.set(parseFloat(progress.duration));
@@ -148,22 +147,23 @@ minplayer.players.vimeo.prototype.onReady = function(player_id) {
     _this.bytesTotal.set(progress.bytesTotal);
   });
 
-  this.media.addEvent('playProgress', function(progress) {
+  this.player.addEvent('playProgress', function(progress) {
 
     // Set the duration and current time.
+    console.log(progress);
     _this.duration.set(parseFloat(progress.duration));
     _this.currentTime.set(parseFloat(progress.seconds));
   });
 
-  this.media.addEvent('play', function() {
+  this.player.addEvent('play', function() {
     _this.onPlaying();
   });
 
-  this.media.addEvent('pause', function() {
+  this.player.addEvent('pause', function() {
     _this.onPaused();
   });
 
-  this.media.addEvent('finish', function() {
+  this.player.addEvent('finish', function() {
     _this.onComplete();
   });
 
@@ -186,7 +186,7 @@ minplayer.players.vimeo.prototype.playerFound = function() {
 minplayer.players.vimeo.prototype.play = function() {
   minplayer.players.base.prototype.play.call(this);
   if (this.isReady()) {
-    this.media.api('play');
+    this.player.api('play');
   }
 };
 
@@ -196,7 +196,7 @@ minplayer.players.vimeo.prototype.play = function() {
 minplayer.players.vimeo.prototype.pause = function() {
   minplayer.players.base.prototype.pause.call(this);
   if (this.isReady()) {
-    this.media.api('pause');
+    this.player.api('pause');
   }
 };
 
@@ -206,7 +206,7 @@ minplayer.players.vimeo.prototype.pause = function() {
 minplayer.players.vimeo.prototype.stop = function() {
   minplayer.players.base.prototype.stop.call(this);
   if (this.isReady()) {
-    this.media.api('unload');
+    this.player.api('unload');
   }
 };
 
@@ -216,7 +216,7 @@ minplayer.players.vimeo.prototype.stop = function() {
 minplayer.players.vimeo.prototype.seek = function(pos) {
   minplayer.players.base.prototype.seek.call(this, pos);
   if (this.isReady()) {
-    this.media.api('seekTo', pos);
+    this.player.api('seekTo', pos);
   }
 };
 
@@ -227,7 +227,7 @@ minplayer.players.vimeo.prototype.setVolume = function(vol) {
   minplayer.players.base.prototype.setVolume.call(this, vol);
   if (this.isReady()) {
     this.volume.set(vol);
-    this.media.api('setVolume', vol);
+    this.player.api('setVolume', vol);
   }
 };
 
@@ -236,7 +236,23 @@ minplayer.players.vimeo.prototype.setVolume = function(vol) {
  */
 minplayer.players.vimeo.prototype.getVolume = function(callback) {
   var _this = this;
-  this.media.api('getVolume', function(vol) {
+  this.player.api('getVolume', function(vol) {
     callback(vol);
   });
+};
+
+/**
+ * @see minplayer.players.base#getDuration.
+ */
+minplayer.players.vimeo.prototype.getDuration = function(callback) {
+  if (this.isReady()) {
+    if (this.duration.value) {
+      callback(this.duration.value);
+    }
+    else {
+      this.player.api('getDuration', function(duration) {
+        callback(duration);
+      });
+    }
+  }
 };

@@ -19,10 +19,10 @@ minplayer.image = function(context, options) {
   this.ratio = 0;
 
   // The image element.
-  this.image = null;
+  this.img = null;
 
   // Derive from display
-  minplayer.display.call(this, context, options);
+  minplayer.display.call(this, 'image', context, options);
 };
 
 /** Derive from minplayer.display. */
@@ -36,9 +36,6 @@ minplayer.image.prototype.constructor = minplayer.image;
  */
 minplayer.image.prototype.construct = function() {
 
-  // Set the name of this plugin.
-  this.options.name = 'image';
-
   // Say we need to resize.
   this.allowResize = true;
 
@@ -50,13 +47,20 @@ minplayer.image.prototype.construct = function() {
 
   // Create the image loader.
   var _this = this;
+
+  /** The loader for the image. */
   this.loader = new Image();
+
+  /** Register for when the image is loaded within the loader. */
   this.loader.onload = function() {
     _this.loaded = true;
     _this.ratio = (_this.loader.width / _this.loader.height);
     _this.resize();
     _this.trigger('loaded');
   };
+
+  // We are now ready.
+  this.ready();
 };
 
 /**
@@ -70,8 +74,8 @@ minplayer.image.prototype.load = function(src) {
   this.clear(function() {
 
     // Create the new image, and append to the display.
-    this.image = jQuery(document.createElement('img')).attr({src: ''}).hide();
-    this.display.append(this.image);
+    this.img = jQuery(document.createElement('img')).attr({src: ''}).hide();
+    this.display.append(this.img);
     this.loader.src = src;
   });
 };
@@ -83,10 +87,10 @@ minplayer.image.prototype.load = function(src) {
  */
 minplayer.image.prototype.clear = function(callback) {
   this.loaded = false;
-  if (this.image) {
+  if (this.img) {
     var _this = this;
-    this.image.fadeOut(function() {
-      _this.image.attr('src', '');
+    this.img.fadeOut(function() {
+      _this.img.attr('src', '');
       _this.loader.src = '';
       $(this).remove();
       callback.call(_this);
@@ -115,8 +119,8 @@ minplayer.image.prototype.resize = function(width, height) {
     });
 
     // Now set this image to the new size.
-    if (this.image) {
-      this.image.attr('src', this.loader.src).css({
+    if (this.img) {
+      this.img.attr('src', this.loader.src).css({
         marginLeft: rect.x,
         marginTop: rect.y,
         width: rect.width,
@@ -125,7 +129,7 @@ minplayer.image.prototype.resize = function(width, height) {
     }
 
     // Show the container.
-    this.image.fadeIn();
+    this.img.fadeIn();
   }
 };
 

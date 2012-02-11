@@ -11,12 +11,11 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
- * @param {function} ready Called when the player is ready.
  */
-minplayer.players.minplayer = function(context, options, ready) {
+minplayer.players.minplayer = function(context, options) {
 
   // Derive from players flash.
-  minplayer.players.flash.call(this, context, options, ready);
+  minplayer.players.flash.call(this, context, options);
 };
 
 /** Derive from minplayer.players.flash. */
@@ -31,8 +30,9 @@ minplayer.players.minplayer.prototype.constructor = minplayer.players.minplayer;
  * @param {string} id The media player ID.
  */
 window.onFlashPlayerReady = function(id) {
-  if (minplayer.player[id]) {
-    minplayer.player[id].media.onReady();
+  var media = minplayer.plugin.get(id, 'media');
+  if (media) {
+    media.onReady();
   }
 };
 
@@ -43,8 +43,9 @@ window.onFlashPlayerReady = function(id) {
  * @param {string} eventType The event type that was triggered.
  */
 window.onFlashPlayerUpdate = function(id, eventType) {
-  if (minplayer.player[id]) {
-    minplayer.player[id].media.onMediaUpdate(eventType);
+  var media = minplayer.plugin.get(id, 'media');
+  if (media) {
+    media.onMediaUpdate(eventType);
   }
 };
 
@@ -147,7 +148,7 @@ minplayer.players.minplayer.prototype.onMediaUpdate = function(eventType) {
 minplayer.players.minplayer.prototype.load = function(file) {
   minplayer.players.flash.prototype.load.call(this, file);
   if (file && this.isReady()) {
-    this.media.loadMedia(file.path, file.stream);
+    this.player.loadMedia(file.path, file.stream);
   }
 };
 
@@ -156,8 +157,9 @@ minplayer.players.minplayer.prototype.load = function(file) {
  */
 minplayer.players.minplayer.prototype.play = function() {
   minplayer.players.flash.prototype.play.call(this);
+  console.log('play');
   if (this.isReady()) {
-    this.media.playMedia();
+    this.player.playMedia();
   }
 };
 
@@ -167,7 +169,7 @@ minplayer.players.minplayer.prototype.play = function() {
 minplayer.players.minplayer.prototype.pause = function() {
   minplayer.players.flash.prototype.pause.call(this);
   if (this.isReady()) {
-    this.media.pauseMedia();
+    this.player.pauseMedia();
   }
 };
 
@@ -177,7 +179,7 @@ minplayer.players.minplayer.prototype.pause = function() {
 minplayer.players.minplayer.prototype.stop = function() {
   minplayer.players.flash.prototype.stop.call(this);
   if (this.isReady()) {
-    this.media.stopMedia();
+    this.player.stopMedia();
   }
 };
 
@@ -187,7 +189,7 @@ minplayer.players.minplayer.prototype.stop = function() {
 minplayer.players.minplayer.prototype.seek = function(pos) {
   minplayer.players.flash.prototype.seek.call(this, pos);
   if (this.isReady()) {
-    this.media.seekMedia(pos);
+    this.player.seekMedia(pos);
   }
 };
 
@@ -197,7 +199,7 @@ minplayer.players.minplayer.prototype.seek = function(pos) {
 minplayer.players.minplayer.prototype.setVolume = function(vol) {
   minplayer.players.flash.prototype.setVolume.call(this, vol);
   if (this.isReady()) {
-    this.media.setVolume(vol);
+    this.player.setVolume(vol);
   }
 };
 
@@ -206,7 +208,7 @@ minplayer.players.minplayer.prototype.setVolume = function(vol) {
  */
 minplayer.players.minplayer.prototype.getVolume = function(callback) {
   if (this.isReady()) {
-    callback(this.media.getVolume());
+    callback(this.player.getVolume());
   }
 };
 
@@ -215,7 +217,24 @@ minplayer.players.minplayer.prototype.getVolume = function(callback) {
  */
 minplayer.players.minplayer.prototype.getDuration = function(callback) {
   if (this.isReady()) {
-    callback(this.media.getDuration());
+
+    // Check to see if it is immediately available.
+    var duration = this.player.getDuration();
+    if (duration) {
+      callback(duration);
+    }
+    else {
+
+      // If not, then check every half second...
+      var _this = this;
+      var check = setInterval(function() {
+        duration = _this.player.getDuration();
+        if (duration) {
+          clearInterval(check);
+          callback(duration);
+        }
+      }, 500);
+    }
   }
 };
 
@@ -224,7 +243,7 @@ minplayer.players.minplayer.prototype.getDuration = function(callback) {
  */
 minplayer.players.minplayer.prototype.getCurrentTime = function(callback) {
   if (this.isReady()) {
-    callback(this.media.getCurrentTime());
+    callback(this.player.getCurrentTime());
   }
 };
 
@@ -233,7 +252,7 @@ minplayer.players.minplayer.prototype.getCurrentTime = function(callback) {
  */
 minplayer.players.minplayer.prototype.getBytesLoaded = function(callback) {
   if (this.isReady()) {
-    callback(this.media.getMediaBytesLoaded());
+    callback(this.player.getMediaBytesLoaded());
   }
 };
 
@@ -242,6 +261,6 @@ minplayer.players.minplayer.prototype.getBytesLoaded = function(callback) {
  */
 minplayer.players.minplayer.prototype.getBytesTotal = function(callback) {
   if (this.isReady()) {
-    callback(this.media.getMediaBytesTotal());
+    callback(this.player.getMediaBytesTotal());
   }
 };
