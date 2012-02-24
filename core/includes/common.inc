@@ -1723,7 +1723,8 @@ function format_plural($count, $singular, $plural, array $args = array(), array 
 
   // Get the plural index through the gettext formula.
   $index = (function_exists('locale_get_plural')) ? locale_get_plural($count, isset($options['langcode']) ? $options['langcode'] : NULL) : -1;
-  // Backwards compatibility.
+  // If the index cannot be computed, use the plural as a fallback (which
+  // allows for most flexiblity with the replaceable @count value).
   if ($index < 0) {
     return t($plural, $args, $options);
   }
@@ -1891,9 +1892,9 @@ function format_date($timestamp, $type = 'medium', $format = '', $timezone = NUL
   }
 
   // Use the default langcode if none is set.
-  global $language;
+  global $language_interface;
   if (empty($langcode)) {
-    $langcode = isset($language->langcode) ? $language->langcode : LANGUAGE_SYSTEM;
+    $langcode = isset($language_interface->langcode) ? $language_interface->langcode : LANGUAGE_SYSTEM;
   }
 
   switch ($type) {
@@ -2495,8 +2496,8 @@ function drupal_deliver_html_page($page_callback_result) {
   }
 
   // Send appropriate HTTP-Header for browsers and search engines.
-  global $language;
-  drupal_add_http_header('Content-Language', $language->langcode);
+  global $language_interface;
+  drupal_add_http_header('Content-Language', $language_interface->langcode);
 
   // Menu status constants are integers; page content is a string or array.
   if (is_int($page_callback_result)) {
@@ -6190,7 +6191,7 @@ function drupal_render_cid_parts($granularity = NULL) {
   // If Locale is enabled but we have only one language we do not need it as cid
   // part.
   if (language_multilingual()) {
-    foreach (language_types_configurable() as $language_type) {
+    foreach (language_types_get_configurable() as $language_type) {
       $cid_parts[] = $GLOBALS[$language_type]->langcode;
     }
   }
