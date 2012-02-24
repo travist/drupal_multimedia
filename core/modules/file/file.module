@@ -166,8 +166,7 @@ function file_library_info() {
         $path . '/src/minplayer.players.minplayer.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.players.youtube.js' => array('group' => JS_LIBRARY),
         $path . '/src/minplayer.players.vimeo.js' => array('group' => JS_LIBRARY),
-        $path . '/src/minplayer.controllers.base.js' => array('group' => JS_LIBRARY),
-        $path . '/src/minplayer.templates.base.js' => array('group' => JS_LIBRARY)
+        $path . '/src/minplayer.controller.base.js' => array('group' => JS_LIBRARY)
       ),
       'dependencies' => array(
         array('system', 'ui.slider')
@@ -207,8 +206,8 @@ function file_media_player_info() {
         'path' => $path . '/default',
         'js' => array(
           $path . '/default/js/minplayer.playLoader.default.js' => array('group' => JS_DEFAULT),
-          $path . '/default/js/minplayer.controllers.default.js' => array('group' => JS_DEFAULT),
-          $path . '/default/js/minplayer.templates.default.js' => array('group' => JS_DEFAULT)
+          $path . '/default/js/minplayer.controller.default.js' => array('group' => JS_DEFAULT),
+          $path . '/default/js/minplayer.default.js' => array('group' => JS_DEFAULT)
         ),
         'css' => array(
           $path . '/default/css/media_player_default.css' => array('group' => CSS_DEFAULT)
