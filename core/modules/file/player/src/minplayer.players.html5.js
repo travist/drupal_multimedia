@@ -96,19 +96,7 @@ minplayer.players.html5.prototype.construct = function() {
       _this.onPlaying();
     }, false);
     this.player.addEventListener('error', function() {
-      var error = '';
-      switch (this.error.code) {
-         case MEDIA_ERR_NETWORK:
-            error = 'Network error - please try again later.';
-            break;
-         case MEDIA_ERR_DECODE:
-            error = 'Video is broken..';
-            break;
-         case MEDIA_ERR_SRC_NOT_SUPPORTED:
-            error = 'Sorry, your browser can\'t play this video.';
-            break;
-       }
-      _this.trigger('error', error);
+      _this.trigger('error', 'An error occured - ' + this.error.code);
     }, false);
     this.player.addEventListener('waiting', function() {
       _this.onWaiting();
@@ -121,26 +109,6 @@ minplayer.players.html5.prototype.construct = function() {
       _this.bytesTotal.set(event.total);
       _this.bytesLoaded.set(event.loaded);
     }, false);
-    if (this.autoBuffer()) {
-      this.player.autobuffer = true;
-    } else {
-      this.player.autobuffer = false;
-      this.player.preload = 'none';
-    }
-  }
-};
-
-/**
- * Determine if this player is able to autobuffer.
- * @return {boolean} TRUE - the player is able to autobuffer.
- */
-minplayer.players.html5.prototype.autoBuffer = function() {
-  var preload = this.player.preload !== 'none';
-  if (typeof this.player.hasAttribute === 'function') {
-    return this.player.hasAttribute('preload') && preload;
-  }
-  else {
-    return false;
   }
 };
 

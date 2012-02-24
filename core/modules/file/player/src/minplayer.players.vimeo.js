@@ -114,13 +114,15 @@ minplayer.players.vimeo.prototype.create = function() {
 
   // Now register this player when the froogaloop code is loaded.
   var _this = this;
-  var check = setInterval(function() {
+  setTimeout(function check() {
     if (window.Froogaloop) {
-      clearInterval(check);
       _this.player = window.Froogaloop(iframe);
       _this.player.addEvent('ready', function() {
         _this.onReady();
       });
+    }
+    else {
+      setTimeout(check, 200);
     }
   }, 200);
 
@@ -150,7 +152,6 @@ minplayer.players.vimeo.prototype.onReady = function(player_id) {
   this.player.addEvent('playProgress', function(progress) {
 
     // Set the duration and current time.
-    console.log(progress);
     _this.duration.set(parseFloat(progress.duration));
     _this.currentTime.set(parseFloat(progress.seconds));
   });

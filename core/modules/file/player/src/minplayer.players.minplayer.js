@@ -30,7 +30,7 @@ minplayer.players.minplayer.prototype.constructor = minplayer.players.minplayer;
  * @param {string} id The media player ID.
  */
 window.onFlashPlayerReady = function(id) {
-  var media = minplayer.plugin.get(id, 'media');
+  var media = minplayer.get(id, 'media');
   if (media) {
     media.onReady();
   }
@@ -43,13 +43,11 @@ window.onFlashPlayerReady = function(id) {
  * @param {string} eventType The event type that was triggered.
  */
 window.onFlashPlayerUpdate = function(id, eventType) {
-  var media = minplayer.plugin.get(id, 'media');
+  var media = minplayer.get(id, 'media');
   if (media) {
     media.onMediaUpdate(eventType);
   }
 };
-
-var debugConsole = console || {log: function(data) {}};
 
 /**
  * Used to debug from the Flash player to the browser console.
@@ -57,7 +55,7 @@ var debugConsole = console || {log: function(data) {}};
  * @param {string} debug The debug string.
  */
 window.onFlashPlayerDebug = function(debug) {
-  debugConsole.log(debug);
+  minplayer.console.log(debug);
 };
 
 /**
@@ -157,7 +155,6 @@ minplayer.players.minplayer.prototype.load = function(file) {
  */
 minplayer.players.minplayer.prototype.play = function() {
   minplayer.players.flash.prototype.play.call(this);
-  console.log('play');
   if (this.isReady()) {
     this.player.playMedia();
   }
@@ -227,11 +224,13 @@ minplayer.players.minplayer.prototype.getDuration = function(callback) {
 
       // If not, then check every half second...
       var _this = this;
-      var check = setInterval(function() {
+      setTimeout(function check() {
         duration = _this.player.getDuration();
         if (duration) {
-          clearInterval(check);
           callback(duration);
+        }
+        else {
+          setTimeout(check, 500);
         }
       }, 500);
     }

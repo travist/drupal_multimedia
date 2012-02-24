@@ -15,6 +15,26 @@ minplayer.playLoader["default"] = function(context, options) {
 minplayer.playLoader["default"].prototype = new minplayer.playLoader.base();
 minplayer.playLoader["default"].prototype.constructor = minplayer.playLoader["default"];
 
+/**
+ * Return the display for this plugin.
+ */
+minplayer.playLoader["default"].prototype.getDisplay = function(context, options) {
+
+  // See if we need to build out the controller.
+  if (context.build) {
+
+    // Prepend the playloader template.
+    context.prepend('\
+    <div class="media-player-play-loader">\
+      <div class="media-player-big-play"><span></span></div>\
+      <div class="media-player-loader">&nbsp;</div>\
+      <div class="media-player-preview"></div>\
+    </div>');
+  }
+
+  return jQuery('.media-player-play-loader', context);
+}
+
 // Return the elements
 minplayer.playLoader["default"].prototype.getElements = function() {
   var elements = minplayer.playLoader.base.prototype.getElements.call(this);
@@ -24,10 +44,3 @@ minplayer.playLoader["default"].prototype.getElements = function() {
     preview:jQuery(".media-player-preview", this.display)
   });
 };
-
-// Add this to the minplayer.plugins array.
-minplayer.plugins = minplayer.plugins || [];
-minplayer.plugins.push({
-  object:minplayer.playLoader["default"],
-  element:".media-player-play-loader"
-});

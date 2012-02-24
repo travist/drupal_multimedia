@@ -5,7 +5,7 @@
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 		<meta name="generator" content="JsDoc Toolkit" />
 		
-		<title>JsDoc Reference - minplayer.playLoader.base</title>
+		<title>JsDoc Reference - minplayer.controller.base</title>
 
 		<style type="text/css">
 			/* default.css */
@@ -232,7 +232,7 @@ ul.inheritsList
 <!-- ============================== class title ============================ -->
 			<h1 class="classTitle">
 				
-				Class minplayer.playLoader.base
+				Class minplayer.controller.base
 			</h1>
 
 <!-- ============================== class summary ========================== -->			
@@ -242,18 +242,18 @@ ul.inheritsList
 					<a href="../symbols/minplayer.display.html">minplayer.display</a>.<br />
 				
 			
-				The play loader base class, which is used to control the busy
-cursor, big play button, and the opaque background which shows when the
-player is paused.
+				This is the base minplayer controller.  Other controllers can derive
+from the base and either build on top of it or simply define the elements
+that this base controller uses.
 				
 				
-					<br /><i>Defined in: </i> <a href="../symbols/src/src_minplayer.playLoader.base.js.html">minplayer.playLoader.base.js</a>.
+					<br /><i>Defined in: </i> <a href="../symbols/src/src_minplayer.controller.base.js.html">minplayer.controller.base.js</a>.
 				
 			</p>
 
 <!-- ============================== constructor summary ==================== -->			
 			
-			<table class="summaryTable" cellspacing="0" summary="A summary of the constructor documented in the class minplayer.playLoader.base.">
+			<table class="summaryTable" cellspacing="0" summary="A summary of the constructor documented in the class minplayer.controller.base.">
 				<caption>Class Summary</caption>
 				<thead>
 					<tr>
@@ -266,7 +266,7 @@ player is paused.
 						<td class="attributes">&nbsp;</td>
 						<td class="nameDescription" >
 							<div class="fixedFont">
-								<b><a href="../symbols/minplayer.playLoader.base.html#constructor">minplayer.playLoader.base</a></b>(context, options)
+								<b><a href="../symbols/minplayer.controller.base.html#constructor">minplayer.controller.base</a></b>(context, options)
 							</div>
 							<div class="description"></div>
 						</td>
@@ -279,7 +279,7 @@ player is paused.
 			
 				
 				
-				<table class="summaryTable" cellspacing="0" summary="A summary of the fields documented in the class minplayer.playLoader.base.">
+				<table class="summaryTable" cellspacing="0" summary="A summary of the fields documented in the class minplayer.controller.base.">
 					<caption>Field Summary</caption>
 					<thead>
 						<tr>
@@ -293,19 +293,9 @@ player is paused.
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
 								<div class="fixedFont">
-								<b><a href="../symbols/minplayer.playLoader.base.html#constructor">constructor</a></b>
+								<b><a href="../symbols/minplayer.controller.base.html#constructor">constructor</a></b>
 								</div>
 								<div class="description">Reset the constructor.</div>
-							</td>
-						</tr>
-					
-						<tr>
-							<td class="attributes">&nbsp;</td>
-							<td class="nameDescription">
-								<div class="fixedFont">
-								<b><a href="../symbols/minplayer.playLoader.base.html#preview">preview</a></b>
-								</div>
-								<div class="description">The preview image.</div>
 							</td>
 						</tr>
 					
@@ -324,7 +314,7 @@ player is paused.
 			
 				
 				
-				<table class="summaryTable" cellspacing="0" summary="A summary of the methods documented in the class minplayer.playLoader.base.">
+				<table class="summaryTable" cellspacing="0" summary="A summary of the methods documented in the class minplayer.controller.base.">
 					<caption>Method Summary</caption>
 					<thead>
 						<tr>
@@ -337,28 +327,45 @@ player is paused.
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.playLoader.base.html#checkVisibility">checkVisibility</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.controller.base.html#construct">construct</a></b>()
 								</div>
-								<div class="description">Hide or show certain elements based on the state of the busy and big play
-button.</div>
+								<div class="description"></div>
 							</td>
 						</tr>
 					
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.playLoader.base.html#construct">construct</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.controller.base.html#getElements">getElements</a></b>()
 								</div>
-								<div class="description">The constructor.</div>
+								<div class="description"></div>
 							</td>
 						</tr>
 					
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/minplayer.playLoader.base.html#loadPreview">loadPreview</a></b>()
+								<div class="fixedFont"><b><a href="../symbols/minplayer.controller.base.html#playPause">playPause</a></b>(state, media)
 								</div>
-								<div class="description">Loads the preview image.</div>
+								<div class="description">Plays or pauses the media.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.controller.base.html#setPlayPause">setPlayPause</a></b>(state)
+								</div>
+								<div class="description">Sets the play and pause state of the control bar.</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/minplayer.controller.base.html#setTimeString">setTimeString</a></b>(element, time)
+								</div>
+								<div class="description">Sets the time string on the control bar.</div>
 							</td>
 						</tr>
 					
@@ -368,7 +375,7 @@ button.</div>
 				
 				
 				<dl class="inheritsList">
-				<dt>Methods borrowed from class <a href="../symbols/minplayer.display.html">minplayer.display</a>: </dt><dd><a href="../symbols/minplayer.display.html#getDisplay">getDisplay</a>, <a href="../symbols/minplayer.display.html#getElements">getElements</a>, <a href="../symbols/minplayer.display.html#getScaledRect">getScaledRect</a>, <a href="../symbols/minplayer.display.html#isValid">isValid</a>, <a href="../symbols/minplayer.display.html#onResize">onResize</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#addPlugin">addPlugin</a>, <a href="../symbols/minplayer.plugin.html#bind">bind</a>, <a href="../symbols/minplayer.plugin.html#checkQueue">checkQueue</a>, <a href="../symbols/minplayer.plugin.html#destroy">destroy</a>, <a href="../symbols/minplayer.plugin.html#get">get</a>, <a href="../symbols/minplayer.plugin.html#loadPlugins">loadPlugins</a>, <a href="../symbols/minplayer.plugin.html#ready">ready</a>, <a href="../symbols/minplayer.plugin.html#trigger">trigger</a>, <a href="../symbols/minplayer.plugin.html#unbind">unbind</a></dd>
+				<dt>Methods borrowed from class <a href="../symbols/minplayer.display.html">minplayer.display</a>: </dt><dd><a href="../symbols/minplayer.display.html#getDisplay">getDisplay</a>, <a href="../symbols/minplayer.display.html#getScaledRect">getScaledRect</a>, <a href="../symbols/minplayer.display.html#isValid">isValid</a>, <a href="../symbols/minplayer.display.html#onResize">onResize</a></dd><dt>Methods borrowed from class <a href="../symbols/minplayer.plugin.html">minplayer.plugin</a>: </dt><dd><a href="../symbols/minplayer.plugin.html#addPlugin">addPlugin</a>, <a href="../symbols/minplayer.plugin.html#bind">bind</a>, <a href="../symbols/minplayer.plugin.html#checkQueue">checkQueue</a>, <a href="../symbols/minplayer.plugin.html#destroy">destroy</a>, <a href="../symbols/minplayer.plugin.html#get">get</a>, <a href="../symbols/minplayer.plugin.html#loadPlugins">loadPlugins</a>, <a href="../symbols/minplayer.plugin.html#ready">ready</a>, <a href="../symbols/minplayer.plugin.html#trigger">trigger</a>, <a href="../symbols/minplayer.plugin.html#unbind">unbind</a></dd>
 				</dl>
 				
 			
@@ -383,7 +390,7 @@ button.</div>
 				</div>
 				
 				<div class="fixedFont">
-						<b>minplayer.playLoader.base</b>(context, options)
+						<b>minplayer.controller.base</b>(context, options)
 				</div>
 				
 				<div class="description">
@@ -448,28 +455,6 @@ button.</div>
 						
 						
 
-					<hr />
-				
-					<a name="preview"> </a>
-					<div class="fixedFont">
-					
-					
-					<b>preview</b>
-					
-					</div>
-					<div class="description">
-						The preview image.
-						
-						
-					</div>
-					
-					
-
-						
-						
-						
-						
-
 					
 				
 			
@@ -480,32 +465,6 @@ button.</div>
 					Method Detail
 				</div>
 				
-					<a name="checkVisibility"> </a>
-					<div class="fixedFont">
-					
-					
-					<b>checkVisibility</b>()
-					
-					</div>
-					<div class="description">
-						Hide or show certain elements based on the state of the busy and big play
-button.
-						
-						
-					</div>
-					
-					
-					
-						
-						
-						
-						
-						
-						
-						
-
-					<hr />
-				
 					<a name="construct"> </a>
 					<div class="fixedFont">
 					
@@ -514,13 +473,101 @@ button.
 					
 					</div>
 					<div class="description">
-						The constructor.
+						
 						
 						
 					</div>
 					
 					
 					
+						
+						
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">See:</dt>
+							
+								<dd><a href="../symbols/minplayer.plugin.html#construct">minplayer.plugin#construct</a></dd>
+							
+							</dl>
+						
+
+					<hr />
+				
+					<a name="getElements"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{object}</span>
+					<b>getElements</b>()
+					
+					</div>
+					<div class="description">
+						
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{object}</span> The elements defined by this display.</dd>
+							
+							</dl>
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">See:</dt>
+							
+								<dd><a href="../symbols/minplayer.display.html#getElements">minplayer.display#getElements</a></dd>
+							
+							</dl>
+						
+
+					<hr />
+				
+					<a name="playPause"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>playPause</b>(state, media)
+					
+					</div>
+					<div class="description">
+						Plays or pauses the media.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{bool}</span> <b>state</b>
+									
+								</dt>
+								<dd>true => play, false => pause.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{object}</span> <b>media</b>
+									
+								</dt>
+								<dd>The media player object.</dd>
+							
+							</dl>
 						
 						
 						
@@ -531,21 +578,74 @@ button.
 
 					<hr />
 				
-					<a name="loadPreview"> </a>
+					<a name="setPlayPause"> </a>
 					<div class="fixedFont">
 					
 					
-					<b>loadPreview</b>()
+					<b>setPlayPause</b>(state)
 					
 					</div>
 					<div class="description">
-						Loads the preview image.
+						Sets the play and pause state of the control bar.
 						
 						
 					</div>
 					
 					
 					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{boolean}</span> <b>state</b>
+									
+								</dt>
+								<dd>TRUE - Show Play, FALSE - Show Pause.</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="setTimeString"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>setTimeString</b>(element, time)
+					
+					</div>
+					<div class="description">
+						Sets the time string on the control bar.
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{string}</span> <b>element</b>
+									
+								</dt>
+								<dd>The name of the element to set.</dd>
+							
+								<dt>
+									<span class="light fixedFont">{number}</span> <b>time</b>
+									
+								</dt>
+								<dd>The total time amount to set.</dd>
+							
+							</dl>
 						
 						
 						

@@ -1,6 +1,15 @@
 /** The minplayer namespace. */
 minplayer = minplayer || {};
 
+/** Static array to keep track of plugin instances. */
+minplayer.instances = minplayer.instances || {};
+
+/** Static array to keep track of queues. */
+minplayer.queue = minplayer.queue || [];
+
+/** Mutex lock to keep multiple triggers from occuring. */
+minplayer.lock = false;
+
 /**
  * @constructor
  * @class The base class for all plugins.
@@ -11,11 +20,28 @@ minplayer = minplayer || {};
  */
 minplayer.plugin = function(name, context, options) {
 
-  // The name of this plugin.
+  /** The name of this plugin. */
   this.name = name;
+
+  /** The ready flag. */
+  this.pluginReady = false;
+
+  /** The options for this plugin. */
+  this.options = options;
+
+  /** The event queue. */
+  this.queue = {};
+
+  /** Keep track of already triggered events. */
+  this.triggered = {};
+
+  /** Create a queue lock. */
+  this.lock = false;
 
   // Only call the constructor if we have a context.
   if (context) {
+
+    // Construct this plugin.
     this.construct();
   }
 };
@@ -37,33 +63,35 @@ minplayer.plugin.prototype.construct = function() {
  * Destructor.
  */
 minplayer.plugin.prototype.destroy = function() {
-  var plugin = this.getPlugin();
-  plugin = null;
+
+  // Unbind all events.
+  this.unbind();
 };
 
 /**
  * Loads all of the available plugins.
  */
 minplayer.plugin.prototype.loadPlugins = function() {
-  var plugin = null;
-  var pluginInfo = {};
-  var pluginContext = null;
+
+  // Get all the plugins to load.
+  var instance = '';
 
   // Iterate through all the plugins.
-  var i = minplayer.plugins.length;
-  while (i--) {
+  for (var name in this.options.plugins) {
 
-    // Get the plugin information.
-    pluginInfo = minplayer.plugins[i];
-    if (pluginInfo.element) {
-      pluginContext = jQuery(pluginInfo.element, this.display);
-    }
-    else {
-      pluginContext = this.display;
-    }
+    // Only load if it does not already exist.
+    if (!minplayer.instances[this.options.id][name]) {
 
-    // Create the new plugin.
-    plugin = new pluginInfo.object(pluginContext, this.options);
+      // Get the instance name from the setting.
+      instance = this.options.plugins[name];
+
+      // If this object exists.
+      if (minplayer[name][instance]) {
+
+        // Declare a new object.
+        new minplayer[name][instance](this.display, this.options);
+      }
+    }
   }
 };
 
@@ -72,38 +100,17 @@ minplayer.plugin.prototype.loadPlugins = function() {
  */
 minplayer.plugin.prototype.ready = function() {
 
-  // Set the loading flag.
-  this.setLoading(false);
+  // Keep this plugin from triggering multiple ready events.
+  if (!this.pluginReady) {
 
-  // Check to see if all loading flags are 0.
-  if (!this.loading()) {
+    // Set the ready flag.
+    this.pluginReady = true;
 
-    // Iterate through all plugins.
-    this.eachPlugin(function(name, plugin) {
+    // Now trigger that I am ready.
+    this.trigger('ready');
 
-      // Initialize this plugin.
-      plugin.initialize();
-    });
-  }
-};
-
-/**
- * Initializes the plugin.
- */
-minplayer.plugin.prototype.initialize = function() {
-};
-
-/**
- * Iterate over each plugin.
- *
- * @param {function} callback Called for each plugin in this player.
- */
-minplayer.plugin.prototype.eachPlugin = function(callback) {
-  var plugins = this.getPlugins();
-  for (var name in plugins) {
-    if (plugins.hasOwnProperty(name)) {
-      callback.call(this, name, plugins[name]);
-    }
+    // Check the queue.
+    this.checkQueue();
   }
 };
 
@@ -120,107 +127,392 @@ minplayer.plugin.prototype.addPlugin = function(name, plugin) {
   // Make sure the plugin is valid.
   if (plugin.isValid()) {
 
-    // Set the plugin as loading.
-    plugin.setLoading(true);
+    // If the plugins for this instance do not exist.
+    if (!minplayer.instances[this.options.id]) {
 
-    // Add the plugin to the plugins array.
-    this.getPlugins()[name] = plugin;
+      // Initialize the instances.
+      minplayer.instances[this.options.id] = {};
+    }
+
+    // Add this plugin.
+    minplayer.instances[this.options.id][name] = plugin;
   }
 };
 
 /**
- * Gets a plugin by name.
+ * Gets a plugin by name and calls callback when it is ready.
  *
- * @param {string} name The name of the plugin.
- * @return {object} The plugin for the provided name.
+ * @param {string} plugin The plugin of the plugin.
+ * @param {function} callback Called when the plugin is ready.
+ * @return {object} The plugin if no callback is provided.
  */
-minplayer.plugin.prototype.getPlugin = function(name) {
-  name = name || this.name;
-  return minplayer.plugin.get(this.options.id, name);
+minplayer.plugin.prototype.get = function(plugin, callback) {
+
+  // Allow this to be called on itself with a single callback.
+  if (typeof plugin === 'function') {
+    this.get(this.name, plugin);
+    return;
+  }
+
+  // Return the minplayer.get equivalent.
+  return minplayer.get.call(this, this.options.id, plugin, callback);
 };
 
-/** Static array to keep track of plugin instances. */
-minplayer.plugin.instances = {};
+/**
+ * Check the queue and execute it.
+ */
+minplayer.plugin.prototype.checkQueue = function() {
 
-/** Static variable to keep track of loading states for each widget. */
-minplayer.plugin.loading = {};
+  // Initialize our variables.
+  var q = null, i = 0, check = false, newqueue = [];
+
+  // Set the lock.
+  minplayer.lock = true;
+
+  // Iterate through all the queues.
+  var length = minplayer.queue.length;
+  for (i = 0; i < length; i++) {
+
+    // Get the queue.
+    q = minplayer.queue[i];
+
+    // Now check to see if this queue is about us.
+    check = !q.id && !q.plugin;
+    check |= (q.plugin == this.name) && (!q.id || (q.id == this.options.id));
+
+    // If the check passes...
+    if (check) {
+      check = minplayer.bind.call(
+        q.context,
+        q.event,
+        this.options.id,
+        this.name,
+        q.callback
+      );
+    }
+
+    // Add the queue back if it doesn't check out.
+    if (!check) {
+
+      // Add this back to the queue.
+      newqueue.push(q);
+    }
+  }
+
+  // Set the old queue to the new queue.
+  minplayer.queue = newqueue;
+
+  // Release the lock.
+  minplayer.lock = false;
+};
 
 /**
- * Iterate over each plugin instance.
+ * Trigger a media event.
  *
- * @param {string} type The type of plugin you wish to get.
- * @param {function} callback Called for every plugin of this type.
+ * @param {string} type The event type.
+ * @param {object} data The event data object.
+ * @return {object} The plugin object.
  */
-minplayer.plugin.each = function(type, callback) {
-  for (var id in minplayer.plugin.instances) {
-    var instances = minplayer.plugin.instances[id];
-    for (var name in instances) {
-      if (name === type) {
-        callback.call(instances[name], instances[name]);
+minplayer.plugin.prototype.trigger = function(type, data) {
+  data = data || {};
+  data.plugin = this;
+
+  // Add this to our triggered array.
+  this.triggered[type] = data;
+
+  // Check to make sure the queue for this type exists.
+  if (this.queue[type]) {
+
+    var i = 0, queue = {};
+
+    // Iterate through all the callbacks in this queue.
+    for (i in this.queue[type]) {
+
+      // Setup the event object, and call the callback.
+      queue = this.queue[type][i];
+      queue.callback({target: this, data: queue.data}, data);
+    }
+  }
+
+  // Return the plugin object.
+  return this;
+};
+
+/**
+ * Bind to a media event.
+ *
+ * @param {string} type The event type.
+ * @param {object} data The data to bind with the event.
+ * @param {function} fn The callback function.
+ * @return {object} The plugin object.
+ **/
+minplayer.plugin.prototype.bind = function(type, data, fn) {
+
+  // Allow the data to be the callback.
+  if (typeof data === 'function') {
+    fn = data;
+    data = null;
+  }
+
+  // You must bind to a specific event and have a callback.
+  if (!type || !fn) {
+    return;
+  }
+
+  // Initialize the queue for this type.
+  this.queue[type] = this.queue[type] || [];
+
+  // Unbind any existing equivalent events.
+  this.unbind(type, fn);
+
+  // Now add this event to the queue.
+  this.queue[type].push({
+    callback: fn,
+    data: data
+  });
+
+  // Now see if this event has already been triggered.
+  if (this.triggered[type]) {
+
+    // Go ahead and trigger the event.
+    fn({target: this, data: data}, this.triggered[type]);
+  }
+
+  // Return the plugin.
+  return this;
+};
+
+/**
+ * Unbind a media event.
+ *
+ * @param {string} type The event type.
+ * @param {function} fn The callback function.
+ * @return {object} The plugin object.
+ **/
+minplayer.plugin.prototype.unbind = function(type, fn) {
+
+  // If this is locked then try again after 10ms.
+  if (this.lock) {
+    setTimeout(function() {
+      this.unbind(type, fn);
+    }, 10);
+  }
+
+  // Set the lock.
+  this.lock = true;
+
+  if (!type) {
+    this.queue = {};
+  }
+  else if (!fn) {
+    this.queue[type] = [];
+  }
+  else {
+    // Iterate through all the callbacks and search for equal callbacks.
+    var i = 0, queue = {};
+    for (i in this.queue[type]) {
+      if (this.queue[type][i].callback === fn) {
+        queue = this.queue[type].splice(1, 1);
+        delete queue;
       }
     }
   }
+
+  // Reset the lock.
+  this.lock = false;
+
+  // Return the plugin.
+  return this;
 };
 
 /**
- * Get a specific plugin.
+ * Adds an item to the queue.
  *
+ * @param {object} context The context which this is called within.
+ * @param {string} event The event to trigger on.
+ * @param {string} id The player ID.
+ * @param {string} plugin The name of the plugin.
+ * @param {function} callback Called when the event occurs.
+ */
+minplayer.addQueue = function(context, event, id, plugin, callback) {
+
+  // See if it is locked...
+  if (!minplayer.lock) {
+    minplayer.queue.push({
+      context: context,
+      id: id,
+      event: event,
+      plugin: plugin,
+      callback: callback
+    });
+  }
+  else {
+
+    // If so, then try again after 10 milliseconds.
+    setTimeout(function() {
+      minplayer.addQueue(context, id, event, plugin, callback);
+    }, 10);
+  }
+};
+
+/**
+ * Binds an event to a plugin instance, and if it doesn't exist, then caches
+ * it for a later time.
+ *
+ * @param {string} event The event to trigger on.
+ * @param {string} id The player ID.
+ * @param {string} plugin The name of the plugin.
+ * @param {function} callback Called when the event occurs.
+ * @return {boolean} If the bind was successful.
+ * @this The object in context who called this method.
+ */
+minplayer.bind = function(event, id, plugin, callback) {
+
+  // If no callback exists, then just return false.
+  if (!callback) {
+    return false;
+  }
+
+  // Get the instances.
+  var inst = minplayer.instances;
+
+  // See if this plugin exists.
+  if (inst[id][plugin]) {
+
+    // If so, then bind the event to this plugin.
+    inst[id][plugin].bind(event, {context: this}, function(event, data) {
+      callback.call(event.data.context, data.plugin);
+    });
+    return true;
+  }
+
+  // If not, then add it to the queue to bind later.
+  minplayer.addQueue(this, event, id, plugin, callback);
+
+  // Return that this wasn't handled.
+  return false;
+};
+
+/**
+ * The main API for minPlayer.
+ *
+ * Provided that this function takes three parameters, there are 8 different
+ * ways to use this api.
+ *
+ *   id (0x100) - You want a specific player.
+ *   plugin (0x010) - You want a specific plugin.
+ *   callback (0x001) - You only want it when it is ready.
+ *
+ *   000 - You want all plugins from all players, ready or not.
+ *
+ *          var instances = minplayer.get();
+ *
+ *   001 - You want all plugins from all players, but only when ready.
+ *
+ *          minplayer.get(function(plugin) {
+ *            // Code goes here.
+ *          });
+ *
+ *   010 - You want a specific plugin from all players, ready or not...
+ *
+ *          var medias = minplayer.get(null, 'media');
+ *
+ *   011 - You want a specific plugin from all players, but only when ready.
+ *
+ *          minplayer.get('player', function(player) {
+ *            // Code goes here.
+ *          });
+ *
+ *   100 - You want all plugins from a specific player, ready or not.
+ *
+ *          var plugins = minplayer.get('player_id');
+ *
+ *   101 - You want all plugins from a specific player, but only when ready.
+ *
+ *          minplayer.get('player_id', null, function(plugin) {
+ *            // Code goes here.
+ *          });
+ *
+ *   110 - You want a specific plugin from a specific player, ready or not.
+ *
+ *          var plugin = minplayer.get('player_id', 'media');
+ *
+ *   111 - You want a specific plugin from a specific player, only when ready.
+ *
+ *          minplayer.get('player_id', 'media', function(media) {
+ *            // Code goes here.
+ *          });
+ *
+ * @this The context in which this function was called.
  * @param {string} id The ID of the widget to get the plugins from.
- * @param {string} type The type of widget to get.
- * @return {object} The plugin instance.
+ * @param {string} plugin The name of the plugin.
+ * @param {function} callback Called when the plugin is ready.
+ * @return {object} The plugin object if it is immediately available.
  */
-minplayer.plugin.get = function(id, type) {
+minplayer.get = function(id, plugin, callback) {
 
-  // If the plugins for this instance do not exist.
-  var instances = minplayer.plugin.instances[id];
-  if (instances && instances[type]) {
-    return instances[type];
+  // Normalize the arguments for a better interface.
+  if (typeof id === 'function') {
+    callback = id;
+    plugin = id = null;
   }
 
-  // Return this instance.
-  return null;
-};
-
-/**
- * Sets the loading flag.
- *
- * @param {boolean} state If this plugin is loading or not.
- */
-minplayer.plugin.prototype.setLoading = function(state) {
-  if (!minplayer.plugin.loading[this.options.id]) {
-    minplayer.plugin.loading[this.options.id] = new minplayer.flags();
+  if (typeof plugin === 'function') {
+    callback = plugin;
+    plugin = id;
+    id = null;
   }
 
-  // Set this loading flag.
-  minplayer.plugin.loading[this.options.id].setFlag(this.name, state);
-};
+  // Make sure the callback is a callback.
+  callback = (typeof callback === 'function') ? callback : null;
 
-/**
- * Determine if this widget is still loading.
- *
- * @return {number} 0 => Widget is done loading, >0 => Widget is still loading.
- */
-minplayer.plugin.prototype.loading = function() {
-  return minplayer.plugin.loading[this.options.id].flag;
-};
+  // Get the instances.
+  var inst = minplayer.instances;
 
-/**
- * Returns the plugins for this ID.
- *
- * @return {array} An array of plugins.
- */
-minplayer.plugin.prototype.getPlugins = function() {
-
-  // If the plugins for this instance do not exist.
-  if (!minplayer.plugin.instances[this.options.id]) {
-
-    // Initialize the instances.
-    minplayer.plugin.instances[this.options.id] = {};
-
-    // Now load all plugins.
-    this.loadPlugins();
+  // 0x000
+  if (!id && !plugin && !callback) {
+    return inst;
   }
-
-  // Return the plugins for this instance.
-  return minplayer.plugin.instances[this.options.id];
+  // 0x100
+  else if (id && !plugin && !callback) {
+    return inst[id];
+  }
+  // 0x110
+  else if (id && plugin && !callback) {
+    return inst[id][plugin];
+  }
+  // 0x111
+  else if (id && plugin && callback) {
+    minplayer.bind.call(this, 'ready', id, plugin, callback);
+  }
+  // 0x011
+  else if (!id && plugin && callback) {
+    for (var id in inst) {
+      minplayer.bind.call(this, 'ready', id, plugin, callback);
+    }
+  }
+  // 0x101
+  else if (id && !plugin && callback) {
+    for (var plugin in inst[id]) {
+      minplayer.bind.call(this, 'ready', id, plugin, callback);
+    }
+  }
+  // 0x010
+  else if (!id && plugin && !callback) {
+    var plugins = {};
+    for (var id in inst) {
+      if (inst.hasOwnProperty(id) && inst[id].hasOwnProperty(plugin)) {
+        plugins[id] = inst[id][plugin];
+      }
+    }
+    return plugins;
+  }
+  // 0x001
+  else {
+    for (var id in inst) {
+      for (var plugin in inst[id]) {
+        minplayer.bind.call(this, 'ready', id, plugin, callback);
+      }
+    }
+  }
 };

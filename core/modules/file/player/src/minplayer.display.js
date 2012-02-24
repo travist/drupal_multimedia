@@ -19,14 +19,8 @@ minplayer.display = function(name, context, options) {
 
   if (context) {
 
-    // Set the display and options.
-    this.display = jQuery(context);
-    this.options = options;
-
-    // Extend all display elements.
-    this.options.elements = this.options.elements || {};
-    jQuery.extend(this.options.elements, this.getElements());
-    this.elements = this.options.elements;
+    // Set the display.
+    this.display = this.getDisplay(context, options);
   }
 
   // Derive from plugin
@@ -40,12 +34,28 @@ minplayer.display.prototype = new minplayer.plugin();
 minplayer.display.prototype.constructor = minplayer.display;
 
 /**
+ * Returns the display for this component.
+ *
+ * @param {object} context The original context.
+ * @param {object} options The options for this component.
+ * @return {object} The jQuery context for this display.
+ */
+minplayer.display.prototype.getDisplay = function(context, options) {
+  return jQuery(context);
+};
+
+/**
  * @see minplayer.plugin.construct
  */
 minplayer.display.prototype.construct = function() {
 
   // Call the plugin constructor.
   minplayer.plugin.prototype.construct.call(this);
+
+  // Extend all display elements.
+  this.options.elements = this.options.elements || {};
+  jQuery.extend(this.options.elements, this.getElements());
+  this.elements = this.options.elements;
 
   // Only do this if they allow resize for this display.
   if (this.allowResize) {
@@ -68,32 +78,6 @@ minplayer.display.prototype.construct = function() {
  * Called when the window resizes.
  */
 minplayer.display.prototype.onResize = function() {
-};
-
-
-/**
- * Trigger a media event.
- *
- * @param {string} type The event type.
- * @param {object} data The event data object.
- * @return {object} The jQuery prototype.
- */
-minplayer.display.prototype.trigger = function(type, data) {
-  return this.display.trigger(type, data);
-};
-
-/**
- * Bind to a media event.
- *
- * @param {string} types The event type.
- * @param {object} data The data to bind with the event.
- * @param {function} fn The callback function.
- * @return {object} The jQuery prototype.
- **/
-minplayer.display.prototype.bind = function(types, data, fn) {
-
-  // We will always unbind first for media events.
-  return this.display.unbind(types, fn).bind(types, data, fn);
 };
 
 /**
