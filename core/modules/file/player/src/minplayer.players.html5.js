@@ -39,17 +39,19 @@ minplayer.players.html5.getPriority = function() {
 minplayer.players.html5.canPlay = function(file) {
   switch (file.mimetype) {
     case 'video/ogg':
-      return minplayer.playTypes.videoOGG;
+      return !!minplayer.playTypes.videoOGG;
     case 'video/mp4':
-      return minplayer.playTypes.videoH264;
+      return !!minplayer.playTypes.videoH264;
     case 'video/x-webm':
-      return minplayer.playTypes.videoWEBM;
+    case 'video/webm':
+    case 'application/octet-stream':
+      return !!minplayer.playTypes.videoWEBM;
     case 'audio/ogg':
-      return minplayer.playTypes.audioOGG;
+      return !!minplayer.playTypes.audioOGG;
     case 'audio/mpeg':
-      return minplayer.playTypes.audioMP3;
+      return !!minplayer.playTypes.audioMP3;
     case 'audio/mp4':
-      return minplayer.playTypes.audioMP4;
+      return !!minplayer.playTypes.audioMP4;
     default:
       return false;
   }
@@ -68,6 +70,7 @@ minplayer.players.html5.prototype.construct = function() {
 
   // For the HTML5 player, we will just pass events along...
   if (this.player) {
+
     this.player.addEventListener('abort', function() {
       _this.trigger('abort');
     }, false);
@@ -126,12 +129,17 @@ minplayer.players.html5.prototype.playerFound = function() {
  */
 minplayer.players.html5.prototype.create = function() {
   minplayer.players.base.prototype.create.call(this);
-  var element = document.createElement(this.mediaFile.type), attribute = '';
-  for (attribute in this.options.attributes) {
-    if (this.options.attributes.hasOwnProperty(attribute)) {
-      element.setAttribute(attribute, this.options.attributes[attribute]);
-    }
-  }
+  var element = jQuery(document.createElement(this.mediaFile.type))
+  .attr(this.options.attributes)
+  .append(
+    jQuery(document.createElement('source')).attr({
+      'src': this.mediaFile.path
+    })
+  );
+
+  // Fix the fluid width and height.
+  element.eq(0)[0].setAttribute('width', '100%');
+  element.eq(0)[0].setAttribute('height', '100%');
   return element;
 };
 

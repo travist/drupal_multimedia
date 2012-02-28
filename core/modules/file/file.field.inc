@@ -1078,24 +1078,6 @@ function theme_file_upload_help($variables) {
 }
 
 /**
- * Returns the media tag for this file.
- *
- * @param type $item The field item.
- * @return type
- */
-function file_get_media_tag($field) {
-  if (isset($field['filemime'])) {
-    if (strpos($field['filemime'], 'video/') === 0) {
-      return 'video';
-    }
-    if (strpos($field['filemime'], 'audio/') === 0) {
-      return 'audio';
-    }
-  }
-  return isset($field['value']) ? 'video' : '';
-}
-
-/**
  * Implements hook_field_formatter_view().
  */
 function file_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
@@ -1140,7 +1122,7 @@ function file_field_formatter_view($entity_type, $entity, $field, $instance, $la
         // Get the media tag.
         $mediatag = '';
         foreach ($items as $delta => $item) {
-          if ($mediatag = file_get_media_tag($item)) {
+          if ($mediatag = file_get_media_type((object)$item)) {
             break;
           }
         }
@@ -1163,7 +1145,7 @@ function file_field_formatter_view($entity_type, $entity, $field, $instance, $la
         foreach ($items as $delta => $item) {
 
           // Get the media tag.
-          if ($mediatag = file_get_media_tag($item)) {
+          if ($mediatag = file_get_media_type((object)$item)) {
             $settings['id'] = $id . '-' . $delta;
             $element[$delta] = array(
               '#theme' => 'media_player',

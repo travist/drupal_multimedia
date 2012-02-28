@@ -291,17 +291,14 @@ function theme_media_player($variables) {
   // Iterate through each of the sources and create a source for that file.
   foreach ($element['#sources'] as $delta => $file) {
 
-    // Convert it to an array.
-    $file = (array)$file;
+    // Make sure this is an object.
+    $file = (object)$file;
 
     // Gets the source of this media.
-    if ($src = file_media_get_src($file)) {
+    if ($source = file_get_source($file)) {
 
       // Get the source attributes.
-      $source_attributes = array('src' => $src);
-      if (isset($file['filemime'])) {
-        $source_attributes['type'] = $file['filemime'];
-      }
+      $source_attributes = array('src' => $source);
 
       // Add the sources to the #value of the media tag.
       $element['#value'] .= theme('html_tag', array(
@@ -325,22 +322,73 @@ function theme_media_player($variables) {
 }
 
 /**
- * Returns the source provided a field.
+ * Returns the media source provided a field.
  *
- * @param type $field
+ * @param object A Drupal file object.
  */
-function file_media_get_src($field) {
-  if ($field) {
-    if (isset($field['uri'])) {
-      return file_create_url($field['uri']);
+function file_get_source($file) {
+  if ($file) {
+    if (isset($file->uri)) {
+      return file_create_url($file->uri);
     }
-    else if (isset($field['value'])) {
-      return $field['value'];
+    else if (!empty($file->value)) {
+      return $file->value;
     }
   }
   return '';
 }
 
+/**
+ * Returns the extension provided a file object.
+ *
+ * @param object A Drupal file object.
+ * @return string The file extension.
+ */
+function file_get_extension($file) {
+
+  // Get the file source.
+  if ($source = file_get_source($file)) {
+    return drupal_strtolower(drupal_substr($source, strrpos($source, '.') + 1));
+  }
+
+  return '';
+}
+
+/**
+ * Return the media type provided a Drupal file object.
+ *
+ * @param object A Drupal file object.
+ * @return string 'video', 'audio', or '' if none.
+ */
+function file_get_media_type($file) {
+
+  // First try the filemime.
+  if (isset($file->filemime)) {
+    if (strpos($file->filemime, 'video/') === 0) {
+      return 'video';
+    }
+    if (strpos($file->filemime, 'audio/') === 0) {
+      return 'audio';
+    }
+  }
+
+  // Next try the extension.
+  if ($ext = file_get_extension($file)) {
+
+    // Determine if the extension is a "video" type.
+    if (in_array($ext, array('swf', 'mov', 'mp4', 'm4v', 'flv', 'f4v', 'ogg', 'ogv', '3g2', 'webm'))) {
+      return 'video';
+    }
+
+    // Determine if the extension is an "audio" type.
+    if (in_array($ext, array('mp3', 'oga', 'wav', 'aif', 'm4a', 'aac'))) {
+      return 'audio';
+    }
+  }
+
+  // Return video if value is set, nothing otherwise.
+  return !empty($file->value) ? 'video' : '';
+}
 
 /**
  * Returns the settings for this video or audio element.
