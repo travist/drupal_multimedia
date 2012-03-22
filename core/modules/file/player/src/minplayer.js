@@ -14,9 +14,9 @@ if (!jQuery.fn.minplayer) {
       options = options || {};
       options.id = options.id || $(this).attr('id') || Math.random();
       if (!minplayer.plugins[options.id]) {
-        var template = options.template || 'default';
-        if (minplayer[template]) {
-          new minplayer[template](jQuery(this), options);
+        options.template = options.template || 'default';
+        if (minplayer[options.template]) {
+          new minplayer[options.template](jQuery(this), options);
         }
         else {
           new minplayer(jQuery(this), options);
@@ -48,30 +48,6 @@ if (!jQuery.fn.minplayer) {
  */
 minplayer = jQuery.extend(function(context, options) {
 
-  // Make sure we provide default options...
-  options = jQuery.extend({
-    id: 'player',
-    swfplayer: '',
-    wmode: 'transparent',
-    preload: true,
-    autoplay: false,
-    loop: false,
-    width: '100%',
-    height: '350px',
-    debug: false,
-    volume: 80,
-    files: [],
-    file: '',
-    preview: '',
-    attributes: {}
-  }, options);
-
-  // Setup the plugins.
-  options.plugins = jQuery.extend({
-    controller: 'default',
-    playLoader: 'default'
-  }, options.plugins);
-
   // Derive from display
   minplayer.display.call(this, 'player', context, options);
 }, minplayer);
@@ -92,11 +68,39 @@ minplayer.console = console || {log: function(data) {}};
  */
 minplayer.prototype.construct = function() {
 
+  // Allow them to provide arguments based off of the DOM attributes.
+  jQuery.each(this.context[0].attributes, (function(player) {
+    return function(index, attr) {
+      player.options[attr.name] = player.options[attr.name] || attr.value;
+    };
+  })(this));
+
+  // Make sure we provide default options...
+  this.options = jQuery.extend({
+    id: 'player',
+    build: false,
+    wmode: 'transparent',
+    preload: true,
+    autoplay: false,
+    loop: false,
+    width: '100%',
+    height: '350px',
+    debug: false,
+    volume: 80,
+    files: [],
+    file: '',
+    preview: '',
+    attributes: {}
+  }, this.options);
+
   // Call the minplayer display constructor.
   minplayer.display.prototype.construct.call(this);
 
-  // Load the plugins.
-  this.loadPlugins();
+  /** The controller for this player. */
+  this.controller = this.create('controller');
+
+  /** The play loader for this player. */
+  this.playLoader = this.create('playLoader');
 
   /** Variable to store the current media player. */
   this.currentPlayer = 'html5';
@@ -118,28 +122,29 @@ minplayer.prototype.construct = function() {
  * We need to bind to events we are interested in.
  */
 minplayer.prototype.addEvents = function() {
-  var _this = this;
-  minplayer.get.call(this, this.options.id, null, function(plugin) {
+  minplayer.get.call(this, this.options.id, null, (function(player) {
+    return function(plugin) {
 
-    // Bind to the error event.
-    plugin.bind('error', function(event, data) {
+      // Bind to the error event.
+      plugin.bind('error', function(event, data) {
 
-      // If an error occurs within the html5 media player, then try
-      // to fall back to the flash player.
-      if (_this.currentPlayer == 'html5') {
-        _this.options.file.player = 'minplayer';
-        _this.loadPlayer();
-      }
-      else {
-        _this.error(data);
-      }
-    });
+        // If an error occurs within the html5 media player, then try
+        // to fall back to the flash player.
+        if (player.currentPlayer == 'html5') {
+          player.options.file.player = 'minplayer';
+          player.loadPlayer();
+        }
+        else {
+          player.error(data);
+        }
+      });
 
-    // Bind to the fullscreen event.
-    plugin.bind('fullscreen', function(event, data) {
-      _this.resize();
-    });
-  });
+      // Bind to the fullscreen event.
+      plugin.bind('fullscreen', function(event, data) {
+        player.resize();
+      });
+    };
+  })(this));
 };
 
 /**
@@ -166,16 +171,18 @@ minplayer.prototype.error = function(error) {
  * Adds key events to the player.
  */
 minplayer.prototype.addKeyEvents = function() {
-
-  // Bind to key events...
-  jQuery(document).bind('keydown', {obj: this}, function(e) {
-    switch (e.keyCode) {
-      case 113: // ESC
-      case 27:  // Q
-        e.data.obj.display.removeClass('fullscreen');
-        break;
-    }
-  });
+  jQuery(document).bind('keydown', (function(player) {
+    return function(event) {
+      switch (event.keyCode) {
+        case 113: // ESC
+        case 27:  // Q
+          if (player.isFullScreen()) {
+            player.fullscreen(false);
+          }
+          break;
+      }
+    };
+  })(this));
 };
 
 /**
@@ -223,7 +230,7 @@ minplayer.prototype.getMediaFile = function(files) {
   }
 
   // If the file is already a file object then just return.
-  if (files.path) {
+  if (files.path || files.id) {
     return new minplayer.file(files);
   }
 
@@ -284,11 +291,10 @@ minplayer.prototype.loadPlayer = function() {
       return;
     }
 
-    // Store the queue.
-    var queue = this.media ? this.media.queue : {};
-
     // Destroy the current media.
+    var queue = {};
     if (this.media) {
+      queue = this.media.queue;
       this.media.destroy();
     }
 
@@ -296,17 +302,17 @@ minplayer.prototype.loadPlayer = function() {
     pClass = minplayer.players[this.options.file.player];
 
     // Create the new media player.
-    this.media = new pClass(this.elements.display, this.options);
-
-    // Restore the queue.
-    this.media.queue = queue;
+    this.options.mediaelement = this.elements.media;
+    this.media = new pClass(this.elements.display, this.options, queue);
 
     // Now get the media when it is ready.
-    this.get('media', function(media) {
+    this.get('media', (function(player) {
+      return function(media) {
 
-      // Load the media.
-      media.load();
-    });
+        // Load the media.
+        media.load(player.options.file);
+      };
+    })(this));
   }
   // If the media object already exists...
   else if (this.media) {

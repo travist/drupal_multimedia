@@ -45,19 +45,18 @@ minplayer.image.prototype.construct = function() {
   // Set the container to not show any overflow...
   this.display.css('overflow', 'hidden');
 
-  // Create the image loader.
-  var _this = this;
-
   /** The loader for the image. */
   this.loader = new Image();
 
   /** Register for when the image is loaded within the loader. */
-  this.loader.onload = function() {
-    _this.loaded = true;
-    _this.ratio = (_this.loader.width / _this.loader.height);
-    _this.resize();
-    _this.trigger('loaded');
-  };
+  this.loader.onload = (function(image) {
+    return function() {
+      image.loaded = true;
+      image.ratio = (image.loader.width / image.loader.height);
+      image.resize();
+      image.trigger('loaded');
+    };
+  })(this);
 
   // We are now ready.
   this.ready();
@@ -74,6 +73,7 @@ minplayer.image.prototype.load = function(src) {
   this.clear(function() {
 
     // Create the new image, and append to the display.
+    this.display.empty();
     this.img = jQuery(document.createElement('img')).attr({src: ''}).hide();
     this.display.append(this.img);
     this.loader.src = src;
@@ -88,13 +88,14 @@ minplayer.image.prototype.load = function(src) {
 minplayer.image.prototype.clear = function(callback) {
   this.loaded = false;
   if (this.img) {
-    var _this = this;
-    this.img.fadeOut(function() {
-      _this.img.attr('src', '');
-      _this.loader.src = '';
-      $(this).remove();
-      callback.call(_this);
-    });
+    this.img.fadeOut((function(image) {
+      return function() {
+        image.img.attr('src', '');
+        image.loader.src = '';
+        $(this).remove();
+        callback.call(image);
+      };
+    })(this));
   }
   else {
     callback.call(this);

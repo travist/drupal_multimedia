@@ -11,11 +11,12 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
+ * @param {object} queue The event queue to pass events around.
  */
-minplayer.players.base = function(context, options) {
+minplayer.players.base = function(context, options, queue) {
 
   // Derive from display
-  minplayer.display.call(this, 'media', context, options);
+  minplayer.display.call(this, 'media', context, options, queue);
 };
 
 /** Derive from minplayer.display. */
@@ -23,6 +24,18 @@ minplayer.players.base.prototype = new minplayer.display();
 
 /** Reset the constructor. */
 minplayer.players.base.prototype.constructor = minplayer.players.base;
+
+/**
+ * @see minplayer.display.getElements
+ * @this minplayer.players.base
+ * @return {object} The elements for this display.
+ */
+minplayer.players.base.prototype.getElements = function() {
+  var elements = minplayer.display.prototype.getElements.call(this);
+  return jQuery.extend(elements, {
+    media: this.options.mediaelement
+  });
+};
 
 /**
  * Get the priority of this media player.
@@ -62,8 +75,8 @@ minplayer.players.base.prototype.construct = function() {
   // Call the media display constructor.
   minplayer.display.prototype.construct.call(this);
 
-  // Reset the variables to initial state.
-  this.reset();
+  // Clear the media player.
+  this.clear();
 
   /** The currently loaded media file. */
   this.mediaFile = this.options.file;
@@ -77,54 +90,58 @@ minplayer.players.base.prototype.construct = function() {
     }
 
     // Create a new media player element.
-    this.display.html(this.create());
+    this.elements.media = jQuery(this.create());
+    this.display.html(this.elements.media);
   }
 
   // Get the player object...
   this.player = this.getPlayer();
 
   // Set the focus of the element based on if they click in or outside of it.
-  var _this = this;
-  jQuery(document).bind('click', function(e) {
-    if (jQuery(e.target).closest('#' + _this.options.id).length == 0) {
-      _this.hasFocus = false;
-    }
-    else {
-      _this.hasFocus = true;
-    }
-  });
+  jQuery(document).bind('click', (function(player) {
+    return function(event) {
+      if (jQuery(event.target).closest('#' + player.options.id).length == 0) {
+        player.hasFocus = false;
+      }
+      else {
+        player.hasFocus = true;
+      }
+    };
+  })(this));
 
   // Bind to key events...
-  jQuery(document).bind('keydown', {obj: this}, function(e) {
-    if (e.data.obj.hasFocus) {
-      e.preventDefault();
-      switch (e.keyCode) {
-        case 32:  // SPACE
-        case 179: // GOOGLE play/pause button.
-          if (e.data.obj.playing) {
-            e.data.obj.pause();
-          }
-          else {
-            e.data.obj.play();
-          }
-          break;
-        case 38:  // UP
-          e.data.obj.setVolumeRelative(0.1);
-          break;
-        case 40:  // DOWN
-          e.data.obj.setVolumeRelative(-0.1);
-          break;
-        case 37:  // LEFT
-        case 227: // GOOGLE TV REW
-          e.data.obj.seekRelative(-0.05);
-          break;
-        case 39:  // RIGHT
-        case 228: // GOOGLE TV FW
-          e.data.obj.seekRelative(0.05);
-          break;
+  jQuery(document).bind('keydown', (function(player) {
+    return function(event) {
+      if (player.hasFocus) {
+        event.preventDefault();
+        switch (event.keyCode) {
+          case 32:  // SPACE
+          case 179: // GOOGLE play/pause button.
+            if (player.playing) {
+              player.pause();
+            }
+            else {
+              player.play();
+            }
+            break;
+          case 38:  // UP
+            player.setVolumeRelative(0.1);
+            break;
+          case 40:  // DOWN
+            player.setVolumeRelative(-0.1);
+            break;
+          case 37:  // LEFT
+          case 227: // GOOGLE TV REW
+            player.seekRelative(-0.05);
+            break;
+          case 39:  // RIGHT
+          case 228: // GOOGLE TV FW
+            player.seekRelative(0.05);
+            break;
+        }
       }
-    }
-  });
+    };
+  })(this));
 };
 
 /**
@@ -132,18 +149,30 @@ minplayer.players.base.prototype.construct = function() {
  */
 minplayer.players.base.prototype.destroy = function() {
   minplayer.plugin.prototype.destroy.call(this);
+  this.clear();
+};
+
+/**
+ * Clears the media player.
+ */
+minplayer.players.base.prototype.clear = function() {
+
+  // Reset the ready flag.
+  this.playerReady = false;
 
   // Reset the player.
   this.reset();
+
+  // If the player exists, then unbind all events.
+  if (this.player) {
+    jQuery(this.player).unbind();
+  }
 };
 
 /**
  * Resets all variables.
  */
 minplayer.players.base.prototype.reset = function() {
-
-  // Reset the ready flag.
-  this.playerReady = false;
 
   // The duration of the player.
   this.duration = new minplayer.async();
@@ -172,31 +201,22 @@ minplayer.players.base.prototype.reset = function() {
   // We are not loading.
   this.loading = false;
 
-  // If the player exists, then unbind all events.
-  if (this.player) {
-    jQuery(this.player).unbind();
-  }
-};
-
-/**
- * Create a polling timer.
- * @param {function} callback The function to call when you poll.
- */
-minplayer.players.base.prototype.poll = function(callback) {
-  var _this = this;
-  setTimeout(function later() {
-    if (callback.call(_this)) {
-      setTimeout(later, 1000);
-    }
-  }, 1000);
+  // Tell everyone else we reset.
+  this.trigger('pause');
+  this.trigger('waiting');
+  this.trigger('progress', {loaded: 0, total: 0, start: 0});
+  this.trigger('timeupdate', {currentTime: 0, duration: 0});
 };
 
 /**
  * Called when the player is ready to recieve events and commands.
  */
 minplayer.players.base.prototype.onReady = function() {
-  // Store the this pointer.
-  var _this = this;
+
+  // Only continue if we are not already ready.
+  if (this.playerReady) {
+    return;
+  }
 
   // Set the ready flag.
   this.playerReady = true;
@@ -208,44 +228,47 @@ minplayer.players.base.prototype.onReady = function() {
   this.loading = true;
 
   // Create a poll to get the progress.
-  this.poll(function() {
+  this.poll((function(player) {
+    return function() {
 
-    // Only do this if the play interval is set.
-    if (_this.loading) {
+      // Only do this if the play interval is set.
+      if (player.loading) {
 
-      // Get the bytes loaded asynchronously.
-      _this.getBytesLoaded(function(bytesLoaded) {
+        // Get the bytes loaded asynchronously.
+        player.getBytesLoaded(function(bytesLoaded) {
 
-        // Get the bytes total asynchronously.
-        _this.getBytesTotal(function(bytesTotal) {
+          // Get the bytes total asynchronously.
+          player.getBytesTotal(function(bytesTotal) {
 
-          // Trigger an event about the progress.
-          if (bytesLoaded || bytesTotal) {
+            // Trigger an event about the progress.
+            if (bytesLoaded || bytesTotal) {
 
-            // Get the bytes start, but don't require it.
-            var bytesStart = 0;
-            _this.getBytesStart(function(val) {
-              bytesStart = val;
-            });
+              // Get the bytes start, but don't require it.
+              var bytesStart = 0;
+              player.getBytesStart(function(val) {
+                bytesStart = val;
+              });
 
-            // Trigger a progress event.
-            _this.trigger('progress', {
-              loaded: bytesLoaded,
-              total: bytesTotal,
-              start: bytesStart
-            });
+              // Trigger a progress event.
+              player.trigger('progress', {
+                loaded: bytesLoaded,
+                total: bytesTotal,
+                start: bytesStart
+              });
 
-            // Say we are not longer loading if they are equal.
-            if (bytesLoaded >= bytesTotal) {
-              _this.loading = false;
+              // Say we are not longer loading if they are equal.
+              if (bytesLoaded >= bytesTotal) {
+                player.loading = false;
+              }
             }
-          }
+          });
         });
-      });
-    }
+      }
 
-    return _this.loading;
-  });
+      // Keep polling as long as its loading...
+      return player.loading;
+    };
+  })(this), 1000);
 
   // We are now ready.
   this.ready();
@@ -258,8 +281,6 @@ minplayer.players.base.prototype.onReady = function() {
  * Should be called when the media is playing.
  */
 minplayer.players.base.prototype.onPlaying = function() {
-  // Store the this pointer.
-  var _this = this;
 
   // Trigger an event that we are playing.
   this.trigger('playing');
@@ -271,36 +292,39 @@ minplayer.players.base.prototype.onPlaying = function() {
   this.playing = true;
 
   // Create a poll to get the timeupate.
-  this.poll(function() {
+  this.poll((function(player) {
+    return function() {
 
-    // Only do this if the play interval is set.
-    if (_this.playing) {
+      // Only do this if the play interval is set.
+      if (player.playing) {
 
-      // Get the current time asyncrhonously.
-      _this.getCurrentTime(function(currentTime) {
+        // Get the current time asyncrhonously.
+        player.getCurrentTime(function(currentTime) {
 
-        // Get the duration asynchronously.
-        _this.getDuration(function(duration) {
+          // Get the duration asynchronously.
+          player.getDuration(function(duration) {
 
-          // Convert these to floats.
-          currentTime = parseFloat(currentTime);
-          duration = parseFloat(duration);
+            // Convert these to floats.
+            currentTime = parseFloat(currentTime);
+            duration = parseFloat(duration);
 
-          // Trigger an event about the progress.
-          if (currentTime || duration) {
+            // Trigger an event about the progress.
+            if (currentTime || duration) {
 
-            // Trigger an update event.
-            _this.trigger('timeupdate', {
-              currentTime: currentTime,
-              duration: duration
-            });
-          }
+              // Trigger an update event.
+              player.trigger('timeupdate', {
+                currentTime: currentTime,
+                duration: duration
+              });
+            }
+          });
         });
-      });
-    }
+      }
 
-    return _this.playing;
-  });
+      // Keep polling as long as it is playing.
+      return player.playing;
+    };
+  })(this), 1000);
 };
 
 /**
@@ -408,7 +432,9 @@ minplayer.players.base.prototype.getPlayer = function() {
 minplayer.players.base.prototype.load = function(file) {
 
   // Store the media file for future lookup.
-  if (file) {
+  var isString = (typeof this.mediaFile == 'string');
+  var path = isString ? this.mediaFile : this.mediaFile.path;
+  if (file && (file.path != path)) {
     this.reset();
     this.mediaFile = file;
   }
@@ -443,29 +469,30 @@ minplayer.players.base.prototype.stop = function() {
 minplayer.players.base.prototype.seekRelative = function(pos) {
 
   // Get the current time asyncrhonously.
-  var _this = this;
-  this.getCurrentTime(function(currentTime) {
+  this.getCurrentTime((function(player) {
+    return function(currentTime) {
 
-    // Get the duration asynchronously.
-    _this.getDuration(function(duration) {
+      // Get the duration asynchronously.
+      player.getDuration(function(duration) {
 
-      // Only do this if we have a duration.
-      if (duration) {
+        // Only do this if we have a duration.
+        if (duration) {
 
-        // Get the position.
-        var seekPos = 0;
-        if ((pos > -1) && (pos < 1)) {
-          seekPos = (currentTime / duration) + parseFloat(pos);
+          // Get the position.
+          var seekPos = 0;
+          if ((pos > -1) && (pos < 1)) {
+            seekPos = (currentTime / duration) + parseFloat(pos);
+          }
+          else {
+            seekPos = (currentTime + parseFloat(pos)) / duration;
+          }
+
+          // Set the seek value.
+          player.seek(seekPos);
         }
-        else {
-          seekPos = (currentTime + parseFloat(pos)) / duration;
-        }
-
-        // Set the seek value.
-        _this.seek(seekPos);
-      }
-    });
-  });
+      });
+    };
+  })(this));
 };
 
 /**
@@ -484,13 +511,14 @@ minplayer.players.base.prototype.seek = function(pos) {
 minplayer.players.base.prototype.setVolumeRelative = function(vol) {
 
   // Get the volume
-  var _this = this;
-  this.getVolume(function(newVol) {
-    newVol += parseFloat(vol);
-    newVol = (newVol < 0) ? 0 : newVol;
-    newVol = (newVol > 1) ? 1 : newVol;
-    _this.setVolume(newVol);
-  });
+  this.getVolume((function(player) {
+    return function(newVol) {
+      newVol += parseFloat(vol);
+      newVol = (newVol < 0) ? 0 : newVol;
+      newVol = (newVol > 1) ? 1 : newVol;
+      player.setVolume(newVol);
+    };
+  })(this));
 };
 
 /**

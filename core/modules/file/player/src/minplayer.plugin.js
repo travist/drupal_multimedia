@@ -17,8 +17,9 @@ minplayer.lock = false;
  * @param {string} name The name of this plugin.
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
+ * @param {object} queue The event queue to pass events around.
  */
-minplayer.plugin = function(name, context, options) {
+minplayer.plugin = function(name, context, options, queue) {
 
   /** The name of this plugin. */
   this.name = name;
@@ -27,10 +28,10 @@ minplayer.plugin = function(name, context, options) {
   this.pluginReady = false;
 
   /** The options for this plugin. */
-  this.options = options;
+  this.options = options || {};
 
   /** The event queue. */
-  this.queue = {};
+  this.queue = queue || {};
 
   /** Keep track of already triggered events. */
   this.triggered = {};
@@ -40,6 +41,9 @@ minplayer.plugin = function(name, context, options) {
 
   // Only call the constructor if we have a context.
   if (context) {
+
+    /** Keep track of the context. */
+    this.context = context;
 
     // Construct this plugin.
     this.construct();
@@ -69,30 +73,39 @@ minplayer.plugin.prototype.destroy = function() {
 };
 
 /**
- * Loads all of the available plugins.
+ * Creates a new plugin within this context.
+ *
+ * @param {string} name The name of the plugin you wish to create.
+ * @param {object} base The base object for this plugin.
+ * @param {object} context The context which you would like to create.
+ * @return {object} The new plugin object.
  */
-minplayer.plugin.prototype.loadPlugins = function() {
+minplayer.plugin.prototype.create = function(name, base, context) {
+  var plugin = null;
 
-  // Get all the plugins to load.
-  var instance = '';
+  // Make sure we have a base object.
+  base = base || 'minplayer';
 
-  // Iterate through all the plugins.
-  for (var name in this.options.plugins) {
+  // Make sure there is a context.
+  context = context || this.display;
 
-    // Only load if it does not already exist.
-    if (!minplayer.plugins[this.options.id][name]) {
+  // See if this plugin exists within this object.
+  if (window[base][name]) {
 
-      // Get the instance name from the setting.
-      instance = this.options.plugins[name];
+    // Set the plugin.
+    plugin = window[base][name];
 
-      // If this object exists.
-      if (minplayer[name][instance]) {
+    // See if a template version of the plugin exists.
+    if (plugin[this.options.template]) {
 
-        // Declare a new object.
-        new minplayer[name][instance](this.display, this.options);
-      }
+      plugin = plugin[this.options.template];
     }
+
+    // Create the new plugin.
+    return new plugin(context, this.options);
   }
+
+  return null;
 };
 
 /**
@@ -137,6 +150,22 @@ minplayer.plugin.prototype.addPlugin = function(name, plugin) {
     // Add this plugin.
     minplayer.plugins[this.options.id][name] = plugin;
   }
+};
+
+/**
+ * Create a polling timer.
+ *
+ * @param {function} callback The function to call when you poll.
+ * @param {integer} interval The interval you would like to poll.
+ */
+minplayer.plugin.prototype.poll = function(callback, interval) {
+  setTimeout((function(context) {
+    return function callLater() {
+      if (callback.call(context)) {
+        setTimeout(callLater, interval);
+      }
+    };
+  })(this), interval);
 };
 
 /**
@@ -221,7 +250,7 @@ minplayer.plugin.prototype.trigger = function(type, data) {
   this.triggered[type] = data;
 
   // Check to make sure the queue for this type exists.
-  if (this.queue[type]) {
+  if (this.queue.hasOwnProperty(type)) {
 
     var i = 0, queue = {};
 
@@ -293,10 +322,11 @@ minplayer.plugin.prototype.unbind = function(type, fn) {
 
   // If this is locked then try again after 10ms.
   if (this.lock) {
-    var _this = this;
-    setTimeout(function() {
-      _this.unbind(type, fn);
-    }, 10);
+    setTimeout((function(plugin) {
+      return function() {
+        plugin.unbind(type, fn);
+      };
+    })(this), 10);
   }
 
   // Set the lock.

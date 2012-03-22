@@ -1,9 +1,6 @@
 /** The minplayer namespace. */
 var minplayer = minplayer || {};
 
-/** Define the playLoader object. */
-minplayer.playLoader = minplayer.playLoader || {};
-
 /**
  * @constructor
  * @extends minplayer.display
@@ -14,7 +11,7 @@ minplayer.playLoader = minplayer.playLoader || {};
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
  */
-minplayer.playLoader.base = function(context, options) {
+minplayer.playLoader = function(context, options) {
 
   // Define the flags that control the busy cursor.
   this.busy = new minplayer.flags();
@@ -30,15 +27,15 @@ minplayer.playLoader.base = function(context, options) {
 };
 
 /** Derive from minplayer.display. */
-minplayer.playLoader.base.prototype = new minplayer.display();
+minplayer.playLoader.prototype = new minplayer.display();
 
 /** Reset the constructor. */
-minplayer.playLoader.base.prototype.constructor = minplayer.playLoader.base;
+minplayer.playLoader.prototype.constructor = minplayer.playLoader;
 
 /**
  * The constructor.
  */
-minplayer.playLoader.base.prototype.construct = function() {
+minplayer.playLoader.prototype.construct = function() {
 
   // Call the media display constructor.
   minplayer.display.prototype.construct.call(this);
@@ -48,6 +45,14 @@ minplayer.playLoader.base.prototype.construct = function() {
 
     // Only bind if this player does not have its own play loader.
     if (!media.hasPlayLoader()) {
+
+      // Get the poster image.
+      if (!this.options.preview) {
+        this.options.preview = media.elements.media.attr('poster');
+      }
+
+      // Reset the media's poster image.
+      media.elements.media.attr('poster', '');
 
       // Load the preview image.
       this.loadPreview();
@@ -62,34 +67,44 @@ minplayer.playLoader.base.prototype.construct = function() {
       }
 
       // Bind to the player events to control the play loader.
-      media.unbind('loadstart').bind('loadstart', {obj: this}, function(event) {
-        event.data.obj.busy.setFlag('media', true);
-        event.data.obj.bigPlay.setFlag('media', true);
-        if (event.data.obj.preview) {
-          event.data.obj.elements.preview.show();
-        }
-        event.data.obj.checkVisibility();
-      });
-      media.bind('waiting', {obj: this}, function(event) {
-        event.data.obj.busy.setFlag('media', true);
-        event.data.obj.checkVisibility();
-      });
-      media.bind('loadeddata', {obj: this}, function(event) {
-        event.data.obj.busy.setFlag('media', false);
-        event.data.obj.checkVisibility();
-      });
-      media.bind('playing', {obj: this}, function(event) {
-        event.data.obj.busy.setFlag('media', false);
-        event.data.obj.bigPlay.setFlag('media', false);
-        if (event.data.obj.preview) {
-          event.data.obj.elements.preview.hide();
-        }
-        event.data.obj.checkVisibility();
-      });
-      media.bind('pause', {obj: this}, function(event) {
-        event.data.obj.bigPlay.setFlag('media', true);
-        event.data.obj.checkVisibility();
-      });
+      media.unbind('loadstart').bind('loadstart', (function(playLoader) {
+        return function(event) {
+          playLoader.busy.setFlag('media', true);
+          playLoader.bigPlay.setFlag('media', true);
+          if (playLoader.preview) {
+            playLoader.elements.preview.show();
+          }
+          playLoader.checkVisibility();
+        };
+      })(this));
+      media.bind('waiting', (function(playLoader) {
+        return function(event) {
+          playLoader.busy.setFlag('media', true);
+          playLoader.checkVisibility();
+        };
+      })(this));
+      media.bind('loadeddata', (function(playLoader) {
+        return function(event) {
+          playLoader.busy.setFlag('media', false);
+          playLoader.checkVisibility();
+        };
+      })(this));
+      media.bind('playing', (function(playLoader) {
+        return function(event) {
+          playLoader.busy.setFlag('media', false);
+          playLoader.bigPlay.setFlag('media', false);
+          if (playLoader.preview) {
+            playLoader.elements.preview.hide();
+          }
+          playLoader.checkVisibility();
+        };
+      })(this));
+      media.bind('pause', (function(playLoader) {
+        return function(event) {
+          playLoader.bigPlay.setFlag('media', true);
+          playLoader.checkVisibility();
+        };
+      })(this));
     }
     else {
 
@@ -115,18 +130,10 @@ minplayer.playLoader.base.prototype.construct = function() {
 /**
  * Loads the preview image.
  */
-minplayer.playLoader.base.prototype.loadPreview = function() {
+minplayer.playLoader.prototype.loadPreview = function() {
 
   // If the preview element exists.
   if (this.elements.preview) {
-
-    // Get the poster image.
-    if (!this.options.preview) {
-      this.options.preview = this.elements.media.attr('poster');
-    }
-
-    // Reset the media's poster image.
-    this.elements.media.attr('poster', '');
 
     // If there is a preview to show...
     if (this.options.preview) {
@@ -152,7 +159,7 @@ minplayer.playLoader.base.prototype.loadPreview = function() {
  * Hide or show certain elements based on the state of the busy and big play
  * button.
  */
-minplayer.playLoader.base.prototype.checkVisibility = function() {
+minplayer.playLoader.prototype.checkVisibility = function() {
 
   // Hide or show the busy cursor based on the flags.
   if (this.busy.flag) {

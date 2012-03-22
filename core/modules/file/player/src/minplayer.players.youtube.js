@@ -11,14 +11,15 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
+ * @param {object} queue The event queue to pass events around.
  */
-minplayer.players.youtube = function(context, options) {
+minplayer.players.youtube = function(context, options, queue) {
 
   /** The quality of the YouTube stream. */
   this.quality = 'default';
 
   // Derive from players base.
-  minplayer.players.base.call(this, context, options);
+  minplayer.players.base.call(this, context, options, queue);
 };
 
 /** Derive from minplayer.players.base. */
@@ -59,7 +60,7 @@ minplayer.players.youtube.canPlay = function(file) {
 minplayer.players.youtube.getMediaId = function(file) {
   var regex = /^http[s]?\:\/\/(www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9]+)/i;
   if (file.path.search(regex) === 0) {
-    return file.path.replace(regex, '$2');
+    return file.path.match(regex)[2];
   }
   else {
     return file.path;
@@ -168,7 +169,7 @@ minplayer.players.youtube.prototype.onPlayerStateChange = function(event) {
  * @param {string} newQuality The new quality for the change.
  */
 minplayer.players.youtube.prototype.onQualityChange = function(newQuality) {
-  this.quality = newQuality;
+  this.quality = newQuality.data;
 };
 
 /**

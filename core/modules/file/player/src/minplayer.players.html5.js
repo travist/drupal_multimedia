@@ -11,11 +11,12 @@ minplayer.players = minplayer.players || {};
  *
  * @param {object} context The jQuery context.
  * @param {object} options This components options.
+ * @param {object} queue The event queue to pass events around.
  */
-minplayer.players.html5 = function(context, options) {
+minplayer.players.html5 = function(context, options, queue) {
 
   // Derive players base.
-  minplayer.players.base.call(this, context, options);
+  minplayer.players.base.call(this, context, options, queue);
 };
 
 /** Derive from minplayer.players.base. */
@@ -41,6 +42,9 @@ minplayer.players.html5.canPlay = function(file) {
     case 'video/ogg':
       return !!minplayer.playTypes.videoOGG;
     case 'video/mp4':
+    case 'video/x-mp4':
+    case 'video/m4v':
+    case 'video/x-m4v':
       return !!minplayer.playTypes.videoH264;
     case 'video/x-webm':
     case 'video/webm':
@@ -65,53 +69,79 @@ minplayer.players.html5.prototype.construct = function() {
   // Call base constructor.
   minplayer.players.base.prototype.construct.call(this);
 
-  // Store the this pointer...
-  var _this = this;
-
   // For the HTML5 player, we will just pass events along...
   if (this.player) {
 
-    this.player.addEventListener('abort', function() {
-      _this.trigger('abort');
-    }, false);
-    this.player.addEventListener('loadstart', function() {
-      _this.onReady();
-    }, false);
-    this.player.addEventListener('loadeddata', function() {
-      _this.onLoaded();
-    }, false);
-    this.player.addEventListener('loadedmetadata', function() {
-      _this.onLoaded();
-    }, false);
-    this.player.addEventListener('canplaythrough', function() {
-      _this.onLoaded();
-    }, false);
-    this.player.addEventListener('ended', function() {
-      _this.onComplete();
-    }, false);
-    this.player.addEventListener('pause', function() {
-      _this.onPaused();
-    }, false);
-    this.player.addEventListener('play', function() {
-      _this.onPlaying();
-    }, false);
-    this.player.addEventListener('playing', function() {
-      _this.onPlaying();
-    }, false);
-    this.player.addEventListener('error', function() {
-      _this.trigger('error', 'An error occured - ' + this.error.code);
-    }, false);
-    this.player.addEventListener('waiting', function() {
-      _this.onWaiting();
-    }, false);
-    this.player.addEventListener('durationchange', function() {
-      _this.duration.set(this.duration);
-      _this.trigger('durationchange', {duration: this.duration});
-    }, false);
-    this.player.addEventListener('progress', function(event) {
-      _this.bytesTotal.set(event.total);
-      _this.bytesLoaded.set(event.loaded);
-    }, false);
+    this.player.addEventListener('abort', (function(player) {
+      return function() {
+        player.trigger('abort');
+      };
+    })(this), false);
+    this.player.addEventListener('loadstart', (function(player) {
+      return function() {
+        player.onReady();
+      };
+    })(this), false);
+    this.player.addEventListener('loadeddata', (function(player) {
+      return function() {
+        player.onLoaded();
+      };
+    })(this), false);
+    this.player.addEventListener('loadedmetadata', (function(player) {
+      return function() {
+        player.onLoaded();
+      };
+    })(this), false);
+    this.player.addEventListener('canplaythrough', (function(player) {
+      return function() {
+        player.onLoaded();
+      };
+    })(this), false);
+    this.player.addEventListener('ended', (function(player) {
+      return function() {
+        player.onComplete();
+      };
+    })(this), false);
+    this.player.addEventListener('pause', (function(player) {
+      return function() {
+        player.onPaused();
+      };
+    })(this), false);
+    this.player.addEventListener('play', (function(player) {
+      return function() {
+        player.onPlaying();
+      };
+    })(this), false);
+    this.player.addEventListener('playing', (function(player) {
+      return function() {
+        player.onPlaying();
+      };
+    })(this), false);
+    this.player.addEventListener('error', (function(player) {
+      return function() {
+        player.trigger('error', 'An error occured - ' + this.error.code);
+      };
+    })(this), false);
+    this.player.addEventListener('waiting', (function(player) {
+      return function() {
+        player.onWaiting();
+      };
+    })(this), false);
+    this.player.addEventListener('durationchange', (function(player) {
+      return function() {
+        player.duration.set(this.duration);
+        player.trigger('durationchange', {duration: this.duration});
+      };
+    })(this), false);
+    this.player.addEventListener('progress', (function(player) {
+      return function(event) {
+        player.bytesTotal.set(event.total);
+        player.bytesLoaded.set(event.loaded);
+      };
+    })(this), false);
+
+    // Say we are ready.
+    this.onReady();
   }
 };
 
@@ -148,7 +178,7 @@ minplayer.players.html5.prototype.create = function() {
  * @return {object} The media player object.
  */
 minplayer.players.html5.prototype.getPlayer = function() {
-  return this.options.elements.media.eq(0)[0];
+  return this.elements.media.eq(0)[0];
 };
 
 /**
@@ -156,19 +186,20 @@ minplayer.players.html5.prototype.getPlayer = function() {
  */
 minplayer.players.html5.prototype.load = function(file) {
 
-  if (file && this.isReady()) {
+  if (file) {
 
     // Get the current source.
-    var src = this.options.elements.media.attr('src');
+    var src = this.elements.media.attr('src');
+    if (!src) {
+      src = jQuery('source', this.elements.media).eq(0).attr('src');
+    }
 
     // If the source is different.
     if (src != file.path) {
 
       // Change the source...
-      var code = '<source src="' + file.path + '" ';
-      code += 'type="' + file.mimetype + '"';
-      code += file.codecs ? ' codecs="' + file.path + '">' : '>';
-      this.options.elements.media.attr('src', '').empty().html(code);
+      var code = '<source src="' + file.path + '">';
+      this.elements.media.removeAttr('src').empty().html(code);
     }
   }
 
