@@ -1,5 +1,7 @@
 <?php
 
+use Drupal\Core\Database\Database;
+
 /**
  * @file
  * Common functions that many Drupal modules will need to reference.
@@ -159,6 +161,15 @@ const DRUPAL_CACHE_PER_PAGE = 0x0004;
  * The block or element is the same for every user and page that it is visible.
  */
 const DRUPAL_CACHE_GLOBAL = 0x0008;
+
+/**
+ * The delimiter used to split plural strings.
+ *
+ * This is the ETX (End of text) character and is used as a minimal means to
+ * separate singular and plural variants in source and translation text. It
+ * was found to be the most compatible delimiter for the supported databases.
+ */
+const LOCALE_PLURAL_DELIMITER = "\03";
 
 /**
  * Adds content to a specified region.
@@ -1717,27 +1728,34 @@ function format_xml_elements($array) {
  */
 function format_plural($count, $singular, $plural, array $args = array(), array $options = array()) {
   $args['@count'] = $count;
+  // Join both forms to search a translation.
+  $tranlatable_string = implode(LOCALE_PLURAL_DELIMITER, array($singular, $plural));
+  // Translate as usual.
+  $translated_strings = t($tranlatable_string, $args, $options);
+  // Split joined translation strings into array.
+  $translated_array = explode(LOCALE_PLURAL_DELIMITER, $translated_strings);
+
   if ($count == 1) {
-    return t($singular, $args, $options);
+    return $translated_array[0];
   }
 
   // Get the plural index through the gettext formula.
+  // @todo implement static variable to minimize function_exists() usage.
   $index = (function_exists('locale_get_plural')) ? locale_get_plural($count, isset($options['langcode']) ? $options['langcode'] : NULL) : -1;
-  // If the index cannot be computed, use the plural as a fallback (which
-  // allows for most flexiblity with the replaceable @count value).
-  if ($index < 0) {
-    return t($plural, $args, $options);
+  if ($index == 0) {
+    // Singular form.
+    return $translated_array[0];
   }
   else {
-    switch ($index) {
-      case "0":
-        return t($singular, $args, $options);
-      case "1":
-        return t($plural, $args, $options);
-      default:
-        unset($args['@count']);
-        $args['@count[' . $index . ']'] = $count;
-        return t(strtr($plural, array('@count' => '@count[' . $index . ']')), $args, $options);
+    if (isset($translated_array[$index])) {
+      // N-th plural form.
+      return $translated_array[$index];
+    }
+    else {
+      // If the index cannot be computed or there's no translation, use
+      // the second plural form as a fallback (which allows for most flexiblity
+      // with the replaceable @count value).
+      return $translated_array[1];
     }
   }
 }
@@ -2495,6 +2513,12 @@ function drupal_deliver_html_page($page_callback_result) {
     drupal_add_http_header('Content-Type', 'text/html; charset=utf-8');
   }
 
+  // Send X-UA-Compatible HTTP header to force IE to use the most recent
+  // rendering engine or use Chrome's frame rendering engine if available.
+  if (is_null(drupal_get_http_header('X-UA-Compatible'))) {
+    drupal_add_http_header('X-UA-Compatible', 'IE=edge,chrome=1');
+  }
+
   // Send appropriate HTTP-Header for browsers and search engines.
   global $language_interface;
   drupal_add_http_header('Content-Language', $language_interface->langcode);
@@ -2597,7 +2621,8 @@ function drupal_page_footer() {
   // Commit the user session, if needed.
   drupal_session_commit();
 
-  if (variable_get('cache', 0) && ($cache = drupal_page_set_cache())) {
+  $config = config('system.performance');
+  if ($config->get('cache') && ($cache = drupal_page_set_cache())) {
     drupal_serve_page_from_cache($cache);
   }
   else {
@@ -2818,7 +2843,7 @@ function drupal_add_html_head_link($attributes, $header = FALSE) {
  *   - 'group': A number identifying the group in which to add the stylesheet.
  *     Available constants are:
  *     - CSS_SYSTEM: Any system-layer CSS.
- *     - CSS_DEFAULT: Any module-layer CSS.
+ *     - CSS_DEFAULT: (default) Any module-layer CSS.
  *     - CSS_THEME: Any theme-layer CSS.
  *     The group number serves as a weight: the markup for loading a stylesheet
  *     within a lower weight group is output to the page before the markup for
@@ -3175,7 +3200,14 @@ function drupal_group_css($css) {
  * @see system_element_info()
  */
 function drupal_aggregate_css(&$css_groups) {
-  $preprocess_css = (variable_get('preprocess_css', FALSE) && (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update'));
+  // Only aggregate during normal site operation.
+  if (defined('MAINTENANCE_MODE')) {
+    $preprocess_css = FALSE;
+  }
+  else {
+    $config = config('system.performance');
+    $preprocess_css = $config->get('preprocess_css');
+  }
 
   // For each group that needs aggregation, aggregate its items.
   foreach ($css_groups as $key => $group) {
@@ -4408,9 +4440,16 @@ function drupal_group_js($javascript) {
  * @see drupal_pre_render_scripts()
  */
 function drupal_aggregate_js(&$js_groups) {
-  // Only aggregate when the site is configured to do so, and not during an
-  // update.
-  if (variable_get('preprocess_js', FALSE) && (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update')) {
+  // Only aggregate during normal site operation.
+  if (defined('MAINTENANCE_MODE')) {
+    $preprocess_js = FALSE;
+  }
+  else {
+    $config = config('system.performance');
+    $preprocess_js = $config->get('preprocess_js');
+  }
+
+  if ($preprocess_js) {
     foreach ($js_groups as $key => $group) {
       if ($group['type'] == 'file' && $group['preprocess']) {
         $js_groups[$key]['data'] = drupal_build_js_cache($group['items']);
@@ -5107,6 +5146,7 @@ function _drupal_bootstrap_full() {
   require_once DRUPAL_ROOT . '/core/includes/ajax.inc';
   require_once DRUPAL_ROOT . '/core/includes/token.inc';
   require_once DRUPAL_ROOT . '/core/includes/errors.inc';
+  require_once DRUPAL_ROOT . '/core/includes/schema.inc';
 
   // Detect string handling method
   unicode_check();
@@ -5185,7 +5225,7 @@ function drupal_page_set_cache() {
     }
 
     if ($cache->data['body']) {
-      if (variable_get('page_compression', TRUE) && extension_loaded('zlib')) {
+      if (config('system.performance')->get('page_compression') && extension_loaded('zlib')) {
         $cache->data['body'] = gzencode($cache->data['body'], 9, FORCE_GZIP);
       }
       cache('page')->set($cache->cid, $cache->data, $cache->expire);
@@ -5231,7 +5271,7 @@ function drupal_cron_run() {
     // Make sure every queue exists. There is no harm in trying to recreate an
     // existing queue.
     foreach ($queues as $queue_name => $info) {
-      DrupalQueue::get($queue_name)->createQueue();
+      queue($queue_name)->createQueue();
     }
     // Register shutdown callback.
     drupal_register_shutdown_function('drupal_cron_cleanup');
@@ -5261,7 +5301,7 @@ function drupal_cron_run() {
   foreach ($queues as $queue_name => $info) {
     $function = $info['worker callback'];
     $end = time() + (isset($info['time']) ? $info['time'] : 15);
-    $queue = DrupalQueue::get($queue_name);
+    $queue = queue($queue_name);
     while (time() < $end && ($item = $queue->claimItem())) {
       $function($item->data);
       $queue->deleteItem($item);
@@ -6932,6 +6972,12 @@ function drupal_common_theme() {
     'tel' => array(
       'render element' => 'element',
     ),
+    'email' => array(
+      'render element' => 'element',
+    ),
+    'url' => array(
+      'render element' => 'element',
+    ),
     'form' => array(
       'render element' => 'element',
     ),
@@ -6964,317 +7010,6 @@ function drupal_common_theme() {
     ),
   );
 }
-
-/**
- * @ingroup schemaapi
- * @{
- */
-
-/**
- * Creates all tables defined in a module's hook_schema().
- *
- * Note: This function does not pass the module's schema through
- * hook_schema_alter(). The module's tables will be created exactly as the
- * module defines them.
- *
- * @param $module
- *   The module for which the tables will be created.
- */
-function drupal_install_schema($module) {
-  $schema = drupal_get_schema_unprocessed($module);
-  _drupal_schema_initialize($schema, $module, FALSE);
-
-  foreach ($schema as $name => $table) {
-    db_create_table($name, $table);
-  }
-}
-
-/**
- * Removes all tables defined in a module's hook_schema().
- *
- * Note: This function does not pass the module's schema through
- * hook_schema_alter(). The module's tables will be created exactly as the
- * module defines them.
- *
- * @param $module
- *   The module for which the tables will be removed.
- *
- * @return
- *   An array of arrays with the following key/value pairs:
- *    - success: a boolean indicating whether the query succeeded.
- *    - query: the SQL query(s) executed, passed through check_plain().
- */
-function drupal_uninstall_schema($module) {
-  $schema = drupal_get_schema_unprocessed($module);
-  _drupal_schema_initialize($schema, $module, FALSE);
-
-  foreach ($schema as $table) {
-    if (db_table_exists($table['name'])) {
-      db_drop_table($table['name']);
-    }
-  }
-}
-
-/**
- * Returns the unprocessed and unaltered version of a module's schema.
- *
- * Use this function only if you explicitly need the original
- * specification of a schema, as it was defined in a module's
- * hook_schema(). No additional default values will be set,
- * hook_schema_alter() is not invoked and these unprocessed
- * definitions won't be cached.
- *
- * This function can be used to retrieve a schema specification in
- * hook_schema(), so it allows you to derive your tables from existing
- * specifications.
- *
- * It is also used by drupal_install_schema() and
- * drupal_uninstall_schema() to ensure that a module's tables are
- * created exactly as specified without any changes introduced by a
- * module that implements hook_schema_alter().
- *
- * @param $module
- *   The module to which the table belongs.
- * @param $table
- *   The name of the table. If not given, the module's complete schema
- *   is returned.
- */
-function drupal_get_schema_unprocessed($module, $table = NULL) {
-  // Load the .install file to get hook_schema.
-  module_load_install($module);
-  $schema = module_invoke($module, 'schema');
-
-  if (isset($table) && isset($schema[$table])) {
-    return $schema[$table];
-  }
-  elseif (!empty($schema)) {
-    return $schema;
-  }
-  return array();
-}
-
-/**
- * Fills in required default values for table definitions from hook_schema().
- *
- * @param $schema
- *   The schema definition array as it was returned by the module's
- *   hook_schema().
- * @param $module
- *   The module for which hook_schema() was invoked.
- * @param $remove_descriptions
- *   (optional) Whether to additionally remove 'description' keys of all tables
- *   and fields to improve performance of serialize() and unserialize().
- *   Defaults to TRUE.
- */
-function _drupal_schema_initialize(&$schema, $module, $remove_descriptions = TRUE) {
-  // Set the name and module key for all tables.
-  foreach ($schema as $name => &$table) {
-    if (empty($table['module'])) {
-      $table['module'] = $module;
-    }
-    if (!isset($table['name'])) {
-      $table['name'] = $name;
-    }
-    if ($remove_descriptions) {
-      unset($table['description']);
-      foreach ($table['fields'] as &$field) {
-        unset($field['description']);
-      }
-    }
-  }
-}
-
-/**
- * Retrieves a list of fields from a table schema.
- *
- * The returned list is suitable for use in an SQL query.
- *
- * @param $table
- *   The name of the table from which to retrieve fields.
- * @param
- *   An optional prefix to to all fields.
- *
- * @return An array of fields.
- */
-function drupal_schema_fields_sql($table, $prefix = NULL) {
-  $schema = drupal_get_schema($table);
-  $fields = array_keys($schema['fields']);
-  if ($prefix) {
-    $columns = array();
-    foreach ($fields as $field) {
-      $columns[] = "$prefix.$field";
-    }
-    return $columns;
-  }
-  else {
-    return $fields;
-  }
-}
-
-/**
- * Saves (inserts or updates) a record to the database based upon the schema.
- *
- * @param $table
- *   The name of the table; this must be defined by a hook_schema()
- *   implementation.
- * @param $record
- *   An object or array representing the record to write, passed in by
- *   reference. If inserting a new record, values not provided in $record will
- *   be populated in $record and in the database with the default values from
- *   the schema, as well as a single serial (auto-increment) field (if present).
- *   If updating an existing record, only provided values are updated in the
- *   database, and $record is not modified.
- * @param $primary_keys
- *   To indicate that this is a new record to be inserted, omit this argument.
- *   If this is an update, this argument specifies the primary keys' field
- *   names. If there is only 1 field in the key, you may pass in a string; if
- *   there are multiple fields in the key, pass in an array.
- *
- * @return
- *   If the record insert or update failed, returns FALSE. If it succeeded,
- *   returns SAVED_NEW or SAVED_UPDATED, depending on the operation performed.
- */
-function drupal_write_record($table, &$record, $primary_keys = array()) {
-  // Standardize $primary_keys to an array.
-  if (is_string($primary_keys)) {
-    $primary_keys = array($primary_keys);
-  }
-
-  $schema = drupal_get_schema($table);
-  if (empty($schema)) {
-    return FALSE;
-  }
-
-  $object = (object) $record;
-  $fields = array();
-  $default_fields = array();
-
-  // Go through the schema to determine fields to write.
-  foreach ($schema['fields'] as $field => $info) {
-    if ($info['type'] == 'serial') {
-      // Skip serial types if we are updating.
-      if (!empty($primary_keys)) {
-        continue;
-      }
-      // Track serial field so we can helpfully populate them after the query.
-      // NOTE: Each table should come with one serial field only.
-      $serial = $field;
-    }
-
-    // Skip field if it is in $primary_keys as it is unnecessary to update a
-    // field to the value it is already set to.
-    if (in_array($field, $primary_keys)) {
-      continue;
-    }
-
-    if (!property_exists($object, $field)) {
-      // Skip fields that are not provided, default values are already known
-      // by the database.
-      $default_fields[] = $field;
-      continue;
-    }
-
-    // Build array of fields to update or insert.
-    if (empty($info['serialize'])) {
-      $fields[$field] = $object->$field;
-    }
-    else {
-      $fields[$field] = serialize($object->$field);
-    }
-
-    // Type cast to proper datatype, except when the value is NULL and the
-    // column allows this.
-    //
-    // MySQL PDO silently casts e.g. FALSE and '' to 0 when inserting the value
-    // into an integer column, but PostgreSQL PDO does not. Also type cast NULL
-    // when the column does not allow this.
-    if (isset($object->$field) || !empty($info['not null'])) {
-      if ($info['type'] == 'int' || $info['type'] == 'serial') {
-        $fields[$field] = (int) $fields[$field];
-      }
-      elseif ($info['type'] == 'float') {
-        $fields[$field] = (float) $fields[$field];
-      }
-      else {
-        $fields[$field] = (string) $fields[$field];
-      }
-    }
-  }
-
-  // Build the SQL.
-  if (empty($primary_keys)) {
-    // We are doing an insert.
-    $options = array('return' => Database::RETURN_INSERT_ID);
-    if (isset($serial) && isset($fields[$serial])) {
-      // If the serial column has been explicitly set with an ID, then we don't
-      // require the database to return the last insert id.
-      if ($fields[$serial]) {
-        $options['return'] = Database::RETURN_AFFECTED;
-      }
-      // If a serial column does exist with no value (i.e. 0) then remove it as
-      // the database will insert the correct value for us.
-      else {
-        unset($fields[$serial]);
-      }
-    }
-    // Create an INSERT query. useDefaults() is necessary for the SQL to be
-    // valid when $fields is empty.
-    $query = db_insert($table, $options)
-      ->fields($fields)
-      ->useDefaults($default_fields);
-
-    $return = SAVED_NEW;
-  }
-  else {
-    // Create an UPDATE query.
-    $query = db_update($table)->fields($fields);
-    foreach ($primary_keys as $key) {
-      $query->condition($key, $object->$key);
-    }
-    $return = SAVED_UPDATED;
-  }
-
-  // Execute the SQL.
-  if ($query_return = $query->execute()) {
-    if (isset($serial)) {
-      // If the database was not told to return the last insert id, it will be
-      // because we already know it.
-      if (isset($options) && $options['return'] != Database::RETURN_INSERT_ID) {
-        $object->$serial = $fields[$serial];
-      }
-      else {
-        $object->$serial = $query_return;
-      }
-    }
-  }
-  // If we have a single-field primary key but got no insert ID, the
-  // query failed. Note that we explicitly check for FALSE, because
-  // a valid update query which doesn't change any values will return
-  // zero (0) affected rows.
-  elseif ($query_return === FALSE && count($primary_keys) == 1) {
-    $return = FALSE;
-  }
-
-  // If we are inserting, populate empty fields with default values.
-  if (empty($primary_keys)) {
-    foreach ($schema['fields'] as $field => $info) {
-      if (isset($info['default']) && !property_exists($object, $field)) {
-        $object->$field = $info['default'];
-      }
-    }
-  }
-
-  // If we began with an array, convert back.
-  if (is_array($record)) {
-    $record = (array) $object;
-  }
-
-  return $return;
-}
-
-/**
- * @} End of "ingroup schemaapi".
- */
 
 /**
  * Parses Drupal module and theme .info files.
@@ -7774,9 +7509,10 @@ function archiver_get_archiver($file) {
  * file system, for example to update modules that have newer releases, or to
  * install a new theme.
  *
- * @return
+ * @return array
  *   The Drupal Updater class registry.
  *
+ * @see Drupal\Core\Updater\Updater
  * @see hook_updater_info()
  * @see hook_updater_info_alter()
  */
@@ -7823,3 +7559,97 @@ function drupal_get_filetransfer_info() {
   }
   return $info;
 }
+
+/**
+ * @defgroup queue Queue operations
+ * @{
+ * Queue items to allow later processing.
+ *
+ * The queue system allows placing items in a queue and processing them later.
+ * The system tries to ensure that only one consumer can process an item.
+ *
+ * Before a queue can be used it needs to be created by
+ * Drupal\Core\Queue\QueueInterface::createQueue().
+ *
+ * Items can be added to the queue by passing an arbitrary data object to
+ * Drupal\Core\Queue\QueueInterface::createItem().
+ *
+ * To process an item, call Drupal\Core\Queue\QueueInterface::claimItem() and
+ * specify how long you want to have a lease for working on that item.
+ * When finished processing, the item needs to be deleted by calling
+ * Drupal\Core\Queue\QueueInterface::deleteItem(). If the consumer dies, the
+ * item will be made available again by the Drupal\Core\Queue\QueueInterface
+ * implementation once the lease expires. Another consumer will then be able to
+ * receive it when calling Drupal\Core\Queue\QueueInterface::claimItem().
+ * Due to this, the processing code should be aware that an item might be handed
+ * over for processing more than once.
+ *
+ * The $item object used by the Drupal\Core\Queue\QueueInterface can contain
+ * arbitrary metadata depending on the implementation. Systems using the
+ * interface should only rely on the data property which will contain the
+ * information passed to Drupal\Core\Queue\QueueInterface::createItem().
+ * The full queue item returned by Drupal\Core\Queue\QueueInterface::claimItem()
+ * needs to be passed to Drupal\Core\Queue\QueueInterface::deleteItem() once
+ * processing is completed.
+ *
+ * There are two kinds of queue backends available: reliable, which preserves
+ * the order of messages and guarantees that every item will be executed at
+ * least once. The non-reliable kind only does a best effort to preserve order
+ * in messages and to execute them at least once but there is a small chance
+ * that some items get lost. For example, some distributed back-ends like
+ * Amazon SQS will be managing jobs for a large set of producers and consumers
+ * where a strict FIFO ordering will likely not be preserved. Another example
+ * would be an in-memory queue backend which might lose items if it crashes.
+ * However, such a backend would be able to deal with significantly more writes
+ * than a reliable queue and for many tasks this is more important. See
+ * aggregator_cron() for an example of how to effectively utilize a
+ * non-reliable queue. Another example is doing Twitter statistics -- the small
+ * possibility of losing a few items is insignificant next to power of the
+ * queue being able to keep up with writes. As described in the processing
+ * section, regardless of the queue being reliable or not, the processing code
+ * should be aware that an item might be handed over for processing more than
+ * once (because the processing code might time out before it finishes).
+ */
+
+/**
+ * Instantiates and statically caches the correct class for a queue.
+ *
+ * The following variables can be set by variable_set or $conf overrides:
+ * - queue_class_$name: the class to be used for the queue $name.
+ * - queue_default_class: the class to use when queue_class_$name is not
+ *   defined. Defaults to Drupal\Core\Queue\System, a reliable backend using
+ *   SQL.
+ * - queue_default_reliable_class: the class to use when queue_class_$name is
+ *   not defined and the queue_default_class is not reliable. Defaults to
+ *   Drupal\Core\Queue\System.
+ *
+ * @param string $name
+ *   The name of the queue to work with.
+ * @param bool $reliable
+ *   TRUE if the ordering of items and guaranteeing every item executes at
+ *   least once is important, FALSE if scalability is the main concern. Defaults
+ *   to FALSE.
+ *
+ * @return Drupal\Core\Queue\QueueInterface
+ *   The queue object for a given name.
+ *
+ * @see Drupal\Core\Queue\QueueInterface
+ */
+function queue($name, $reliable = FALSE) {
+  static $queues;
+  if (!isset($queues[$name])) {
+    $class = variable_get('queue_class_' . $name, NULL);
+    if ($class && $reliable && in_array('Drupal\Core\Queue\ReliableQueueInterface', class_implements($class))) {
+      $class = variable_get('queue_default_reliable_class', 'Drupal\Core\Queue\System');
+    }
+    elseif (!$class) {
+      $class = variable_get('queue_default_class', 'Drupal\Core\Queue\System');
+    }
+    $queues[$name] = new $class($name);
+  }
+  return $queues[$name];
+}
+
+/**
+ * @} End of "defgroup queue".
+ */

@@ -140,6 +140,7 @@ function system_list($type) {
     // drupal_get_filename() static cache for bootstrap modules only.
     // The rest is stored separately to keep the bootstrap module cache small.
     foreach ($bootstrap_list as $module) {
+      drupal_classloader_register($module->name, dirname($module->filename));
       drupal_get_filename('module', $module->name, $module->filename);
     }
     // We only return the module names here since module_list() doesn't need
@@ -208,6 +209,7 @@ function system_list($type) {
     // drupal_get_filename() static cache with all enabled modules and themes.
     foreach ($lists['filepaths'] as $item) {
       drupal_get_filename($item['type'], $item['name'], $item['filepath']);
+      drupal_classloader_register($item['name'], dirname($item['filepath']));
     }
   }
 
@@ -460,6 +462,9 @@ function module_enable($module_list, $enable_dependencies = TRUE) {
         // by the module.
         $versions = drupal_get_schema_versions($module);
         $version = $versions ? max($versions) : SCHEMA_INSTALLED;
+
+        // Copy any default configuration data to the system config directory/
+        config_install_default_config($module);
 
         // If the module has no current updates, but has some that were
         // previously removed, set the version to the value of

@@ -13,7 +13,7 @@ function contextual_help($path, $arg) {
     case 'admin/help#contextual':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The Contextual Links module displays links related to regions of pages on your site to users with <em>access contextual links</em> permission. For more information, see the online handbook entry for <a href="@contextual">Contextual Links module</a>.', array('@contextual' => 'http://drupal.org/handbook/modules/contextual')) . '</p>';
+      $output .= '<p>' . t('The Contextual Links module displays links related to regions of pages on your site to users with <em>access contextual links</em> permission. For more information, see the online handbook entry for <a href="@contextual">Contextual Links module</a>.', array('@contextual' => 'http://drupal.org/documentation/modules/contextual')) . '</p>';
       $output .= '<h3>' . t('Uses') . '</h3>';
       $output .= '<dl>';
       $output .= '<dt>' . t('Displaying contextual links') . '</dt>';
@@ -48,7 +48,8 @@ function contextual_library_info() {
       $path . '/contextual.js' => array(),
     ),
     'css' => array(
-      $path . '/contextual.css' => array(),
+      $path . '/contextual.base.css' => array(),
+      $path . '/contextual.theme.css' => array(),
     ),
   );
   return $libraries;
@@ -62,11 +63,9 @@ function contextual_element_info() {
     '#pre_render' => array('contextual_pre_render_links'),
     '#theme' => 'links__contextual',
     '#links' => array(),
-    '#prefix' => '<div class="contextual-links-wrapper">',
+    '#prefix' => '<div class="contextual">',
     '#suffix' => '</div>',
-    '#attributes' => array(
-      'class' => array('contextual-links'),
-    ),
+    '#attributes' => array('class' => array('contextual-links')),
     '#attached' => array(
       'library' => array(
         array('contextual', 'contextual-links'),
@@ -109,7 +108,7 @@ function contextual_preprocess(&$variables, $hook) {
       '#element' => $element,
     );
     // Mark this element as potentially having contextual links attached to it.
-    $variables['classes_array'][] = 'contextual-links-region';
+    $variables['classes_array'][] = 'contextual-region';
   }
 }
 

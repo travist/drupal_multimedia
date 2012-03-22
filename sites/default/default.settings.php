@@ -221,10 +221,10 @@ $update_free_access = FALSE;
  * Salt for one-time login links and cancel links, form tokens, etc.
  *
  * This variable will be set to a random value by the installer. All one-time
- * login links will be invalidated if the value is changed.  Note that this
- * variable must have the same value on every web server.  If this variable is
- * empty, a hash of the serialized database credentials will be used as a
- * fallback salt.
+ * login links will be invalidated if the value is changed. Note that if your
+ * site is deployed on a cluster of web servers, you must ensure that this
+ * variable has the same value on each server. If this variable is empty, a hash
+ * of the serialized database credentials will be used as a fallback salt.
  *
  * For enhanced security, you may set this variable to a value using the
  * contents of a file outside your docroot that is never saved together
@@ -235,6 +235,28 @@ $update_free_access = FALSE;
  *
  */
 $drupal_hash_salt = '';
+
+/**
+ * Location of the site configuration files.
+ *
+ * By default, Drupal configuration files are stored in a randomly named
+ * directory under the default public files path. On install the
+ * named directory is created in the default files directory. For enhanced
+ * security, you may set this variable to a location outside your docroot.
+ *
+ * @todo Flesh this out, provide more details, etc.
+ *
+ * Example:
+ *   $config_directory_name = '/some/directory/outside/webroot';
+ */
+$config_directory_name = '';
+
+/**
+ * Configuration signature key.
+ *
+ * Drupal configuration files are signed using this key.
+ */
+$config_signature_key = '';
 
 /**
  * Base URL (optional).

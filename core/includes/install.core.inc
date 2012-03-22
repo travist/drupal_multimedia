@@ -1,5 +1,8 @@
 <?php
 
+use Drupal\Core\Database\Database;
+use Drupal\Core\Database\Install\TaskException;
+
 /**
  * @file
  * API functions for installing Drupal.
@@ -223,6 +226,27 @@ function install_begin_request(&$install_state) {
 
   // Allow command line scripts to override server variables used by Drupal.
   require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
+
+  // Ensure that the class loader is available so that we can leverage classes
+  // as part of the install routine.
+  $loader = drupal_classloader();
+
+  // Register explicit vendor namespaces.
+  $loader->registerNamespaces(array(
+    // All Symfony-borrowed code lives in /core/includes/Symfony.
+    'Symfony' => DRUPAL_ROOT . '/core/vendor',
+  ));
+  // Register the Drupal namespace for classes in core as a fallback.
+  // This allows to register additional namespaces within the Drupal namespace
+  // (e.g., for modules) and avoids an additional file_exists() on the Drupal
+  // core namespace, since the class loader can already determine the best
+  // namespace match based on a string comparison. It further allows modules to
+  // register/overload namespaces in Drupal core.
+  $loader->registerNamespaceFallbacks(array(
+    // All Drupal-namespaced code in core lives in /core/includes/Drupal.
+    'Drupal' => DRUPAL_ROOT . '/core/lib',
+  ));
+
   if (!$install_state['interactive']) {
     drupal_override_server_variables($install_state['server']);
   }
@@ -244,6 +268,7 @@ function install_begin_request(&$install_state) {
   require_once DRUPAL_ROOT . '/core/includes/common.inc';
   require_once DRUPAL_ROOT . '/core/includes/file.inc';
   require_once DRUPAL_ROOT . '/core/includes/install.inc';
+  require_once DRUPAL_ROOT . '/core/includes/schema.inc';
   require_once DRUPAL_ROOT . '/' . variable_get('path_inc', 'core/includes/path.inc');
 
   // Load module basics (needed for hook invokes).
@@ -287,7 +312,7 @@ function install_begin_request(&$install_state) {
   if ($install_state['settings_verified']) {
     // Initialize the database system. Note that the connection
     // won't be initialized until it is actually requested.
-    require_once DRUPAL_ROOT . '/core/includes/database/database.inc';
+    require_once DRUPAL_ROOT . '/core/includes/database.inc';
 
     // Verify the last completed task in the database, if there is one.
     $task = install_verify_completed_task();
@@ -961,7 +986,7 @@ function install_database_errors($database, $settings_file) {
     try {
       db_run_tasks($driver);
     }
-    catch (DatabaseTaskException $e) {
+    catch (TaskException $e) {
       // These are generic errors, so we do not have any specific key of the
       // database connection array to attach them to; therefore, we just put
       // them in the error array with standard numeric keys.
@@ -986,7 +1011,36 @@ function install_settings_form_submit($form, &$form_state) {
     'value'    => drupal_hash_base64(drupal_random_bytes(55)),
     'required' => TRUE,
   );
+
+  $settings['config_signature_key'] = array(
+    'value'    => drupal_hash_base64(drupal_random_bytes(55)),
+    'required' => TRUE,
+  );
+
+  // This duplicates drupal_get_token() because that function can't work yet.
+  // Wondering if it makes sense to move this later in the process, but its
+  // nice having all the settings stuff here.
+  //
+  // @todo This is actually causing a bug right now, because you can install
+  // without hitting install_settings_form_submit() if your settings.php
+  // already has the db stuff in it, and right now in that case your
+  // config directory never gets created. So this needs to be moved elsewhere.
+  $settings['config_directory_name'] = array(
+    'value'     => 'config_' . drupal_hmac_base64('', session_id() . $settings['config_signature_key']['value'] . $settings['drupal_hash_salt']['value']),
+    'required'  => TRUE,
+  );
+
   drupal_rewrite_settings($settings);
+  // Actually create the config directory named above.
+  $config_path = conf_path() . '/files/' . $settings['config_directory_name']['value'];
+  if (!file_prepare_directory($config_path, FILE_CREATE_DIRECTORY)) {
+    // How best to handle errors here?
+  };
+
+  // Write out a .htaccess file that will protect the config directory from
+  // prying eyes.
+  file_save_htaccess($config_path, TRUE);
+
   // Indicate that the settings file has been verified, and check the database
   // for the last completed task, now that we have a valid connection. This
   // last step is important since we want to trigger an error if the new
@@ -1723,7 +1777,7 @@ function _install_configure_form($form, &$form_state, &$install_state) {
     '#weight' => -20,
   );
   $form['site_information']['site_mail'] = array(
-    '#type' => 'textfield',
+    '#type' => 'email',
     '#title' => st('Site e-mail address'),
     '#default_value' => ini_get('sendmail_from'),
     '#description' => st("Automated e-mails, such as registration information, will be sent from this address. Use an address ending in your site's domain to help prevent these e-mails from being flagged as spam."),
@@ -1746,9 +1800,9 @@ function _install_configure_form($form, &$form_state, &$install_state) {
     '#attributes' => array('class' => array('username')),
   );
 
-  $form['admin_account']['account']['mail'] = array('#type' => 'textfield',
+  $form['admin_account']['account']['mail'] = array(
+    '#type' => 'email',
     '#title' => st('E-mail address'),
-    '#maxlength' => EMAIL_MAX_LENGTH,
     '#required' => TRUE,
     '#weight' => -5,
   );
@@ -1824,12 +1878,6 @@ function _install_configure_form($form, &$form_state, &$install_state) {
 function install_configure_form_validate($form, &$form_state) {
   if ($error = user_validate_name($form_state['values']['account']['name'])) {
     form_error($form['admin_account']['account']['name'], $error);
-  }
-  if ($error = user_validate_mail($form_state['values']['account']['mail'])) {
-    form_error($form['admin_account']['account']['mail'], $error);
-  }
-  if ($error = user_validate_mail($form_state['values']['site_mail'])) {
-    form_error($form['site_information']['site_mail'], $error);
   }
 }
 

@@ -9,6 +9,9 @@
  * Unit tests for the module API.
  */
 class ModuleUnitTest extends DrupalWebTestCase {
+  // Requires Standard profile modules/dependencies.
+  protected $profile = 'standard';
+
   public static function getInfo() {
     return array(
       'name' => 'Module API',
@@ -232,6 +235,44 @@ class ModuleUnitTest extends DrupalWebTestCase {
     $php_before_poll = $php_position !== FALSE && $poll_position !== FALSE && $php_position < $poll_position;
     $poll_before_forum = $poll_position !== FALSE && $forum_position !== FALSE && $poll_position < $forum_position;
     $this->assertTrue($php_before_poll && $poll_before_forum, t('Modules were enabled in the correct order by module_enable().'));
+  }
+}
+
+/**
+ * Tests class loading.
+ */
+class ModuleClassLoaderTestCase extends DrupalWebTestCase {
+  protected $profile = 'testing';
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Module class loader',
+      'description' => 'Tests class loading for modules.',
+      'group' => 'Module',
+    );
+  }
+
+  /**
+   * Tests that module-provided classes can be loaded when a module is enabled.
+   */
+  function testClassLoading() {
+    $expected = 'Drupal\\module_autoload_test\\SomeClass::testMethod() was invoked.';
+
+    module_enable(array('module_test', 'module_autoload_test'), FALSE);
+    $this->resetAll();
+    // Check twice to test an unprimed and primed system_list() cache.
+    for ($i=0; $i<2; $i++) {
+      $this->drupalGet('module-test/class-loading');
+      $this->assertText($expected, t('Autoloader loads classes from an enabled module.'));
+    }
+
+    module_disable(array('module_autoload_test'), FALSE);
+    $this->resetAll();
+    // Check twice to test an unprimed and primed system_list() cache.
+    for ($i=0; $i<2; $i++) {
+      $this->drupalGet('module-test/class-loading');
+      $this->assertNoText($expected, t('Autoloader does not load classes from a disabled module.'));
+    }
   }
 }
 

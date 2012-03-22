@@ -1,4 +1,3 @@
-
 /* ------------------ Reset Styles ------------------ */
 
 caption,
@@ -125,7 +124,7 @@ ul.tips {
 .comment ul.links li {
   padding: 0 0 0.5em;
 }
-.comment-unpublished {
+.comment.unpublished {
   margin-left: 5px;
   margin-right: 0;
   padding: 5px 5px 5px 2px;
@@ -257,6 +256,13 @@ ul.action-links li a {
   text-align: right;
 }
 .poll .total {
+  text-align: left;
+}
+.poll .choice-title {
+  clear: left;
+}
+.poll .percent {
+  float: left;
   text-align: left;
 }
 

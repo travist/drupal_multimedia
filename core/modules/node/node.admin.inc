@@ -1,5 +1,7 @@
 <?php
 
+use Drupal\Core\Database\Query\SelectInterface;
+
 /**
  * @file
  * Content administration and module settings UI.
@@ -102,10 +104,10 @@ function node_filters() {
     ) + node_type_get_names(),
   );
 
-  // Language filter if the site is multilingual.
+  // Language filter if language support is present.
   if (language_multilingual()) {
     $languages = language_list(TRUE);
-    $language_options = array(LANGUAGE_NONE => t('- None -'));
+    $language_options = array(LANGUAGE_NOT_SPECIFIED => t('- None -'));
     foreach ($languages as $langcode => $language) {
       $language_options[$langcode] = $language->name;
     }
@@ -125,7 +127,7 @@ function node_filters() {
  * @param $query
  *   A SelectQuery to which the filters should be applied.
  */
-function node_build_filter_query(SelectQueryInterface $query) {
+function node_build_filter_query(SelectInterface $query) {
   // Build query
   $filter_data = isset($_SESSION['node_overview_filter']) ? $_SESSION['node_overview_filter'] : array();
   foreach ($filter_data as $index => $filter) {
@@ -429,9 +431,8 @@ function node_admin_nodes() {
     '#submit' => array('node_admin_nodes_submit'),
   );
 
-  // Enable language column if translation module is enabled or if we have any
-  // node with language.
-  $multilanguage = (module_exists('translation') || db_query_range("SELECT 1 FROM {node} WHERE langcode <> :langcode", 0, 1, array(':langcode' => LANGUAGE_NONE))->fetchField());
+  // Enable language column and filter if multiple languages are enabled.
+  $multilingual = language_multilingual();
 
   // Build the sortable table header.
   $header = array(
@@ -441,7 +442,7 @@ function node_admin_nodes() {
     'status' => array('data' => t('Status'), 'field' => 'n.status'),
     'changed' => array('data' => t('Updated'), 'field' => 'n.changed', 'sort' => 'desc')
   );
-  if ($multilanguage) {
+  if ($multilingual) {
     $header['language_name'] = array('data' => t('Language'), 'field' => 'n.langcode');
   }
   $header['operations'] = array('data' => t('Operations'));
@@ -477,7 +478,7 @@ function node_admin_nodes() {
   $destination = drupal_get_destination();
   $options = array();
   foreach ($nodes as $node) {
-    $l_options = $node->langcode != LANGUAGE_NONE && isset($languages[$node->langcode]) ? array('language' => $languages[$node->langcode]) : array();
+    $l_options = $node->langcode != LANGUAGE_NOT_SPECIFIED && isset($languages[$node->langcode]) ? array('language' => $languages[$node->langcode]) : array();
     $options[$node->nid] = array(
       'title' => array(
         'data' => array(
@@ -493,7 +494,7 @@ function node_admin_nodes() {
       'status' => $node->status ? t('published') : t('not published'),
       'changed' => format_date($node->changed, 'short'),
     );
-    if ($multilanguage) {
+    if ($multilingual) {
       $options[$node->nid]['language_name'] = language_name($node->langcode);
     }
     // Build a list of all the accessible operations for the current node.

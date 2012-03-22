@@ -1,5 +1,8 @@
 <?php
 
+use Drupal\Core\Database\Database;
+use Drupal\Core\Database\ConnectionNotDefinedException;
+
 /**
  * Global variable that holds information about the tests being run.
  *
@@ -152,7 +155,7 @@ abstract class DrupalTestCase {
     try {
       $connection = Database::getConnection('default', 'simpletest_original_default');
     }
-    catch (DatabaseConnectionNotDefinedException $e) {
+    catch (ConnectionNotDefinedException $e) {
       // If the test was not set up, the simpletest_original_default
       // connection does not exist.
       $connection = Database::getConnection('default', 'default');
@@ -765,7 +768,7 @@ class DrupalWebTestCase extends DrupalTestCase {
    *
    * @var string
    */
-  protected $profile = 'standard';
+  protected $profile = 'testing';
 
   /**
    * The URL currently loaded in the internal browser.
@@ -920,7 +923,7 @@ class DrupalWebTestCase extends DrupalTestCase {
   protected function drupalCreateNode($settings = array()) {
     // Populate defaults array.
     $settings += array(
-      'body'      => array(LANGUAGE_NONE => array(array())),
+      'body'      => array(LANGUAGE_NOT_SPECIFIED => array(array())),
       'title'     => $this->randomName(8),
       'comment'   => 2,
       'changed'   => REQUEST_TIME,
@@ -932,7 +935,7 @@ class DrupalWebTestCase extends DrupalTestCase {
       'sticky'    => 0,
       'type'      => 'page',
       'revisions' => NULL,
-      'langcode'  => LANGUAGE_NONE,
+      'langcode'  => LANGUAGE_NOT_SPECIFIED,
     );
 
     // Use the original node's created time for existing nodes.
@@ -1310,6 +1313,8 @@ class DrupalWebTestCase extends DrupalTestCase {
     // Store necessary current values before switching to prefixed database.
     $this->originalLanguage = $language_interface;
     $this->originalLanguageDefault = variable_get('language_default');
+    $this->originalConfigDirectory = $GLOBALS['config_directory_name'];
+    $this->originalConfigSignatureKey = $GLOBALS['config_signature_key'];
     $this->originalFileDirectory = variable_get('file_public_path', conf_path() . '/files');
     $this->originalProfile = drupal_get_profile();
     $clean_url_original = variable_get('clean_url', 0);
@@ -1345,6 +1350,14 @@ class DrupalWebTestCase extends DrupalTestCase {
     file_prepare_directory($private_files_directory, FILE_CREATE_DIRECTORY);
     file_prepare_directory($temp_files_directory, FILE_CREATE_DIRECTORY);
     $this->generatedTestFiles = FALSE;
+
+    // Create and set a new configuration directory and signature key.
+    // The child site automatically adjusts the global $config_directory_name to
+    // a test-prefix-specific directory within the public files directory.
+    $GLOBALS['config_directory_name'] = 'simpletest/config_' . $this->databasePrefix;
+    $this->configFileDirectory = $this->originalFileDirectory . '/' . $GLOBALS['config_directory_name'];
+    file_prepare_directory($this->configFileDirectory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+    $GLOBALS['config_signature_key'] = drupal_hash_base64(drupal_random_bytes(55));
 
     // Log fatal errors.
     ini_set('log_errors', 1);
@@ -1428,7 +1441,7 @@ class DrupalWebTestCase extends DrupalTestCase {
     $language_interface = language_default();
 
     // Use the test mail class instead of the default mail handler class.
-    variable_set('mail_system', array('default-system' => 'TestingMailSystem'));
+    variable_set('mail_system', array('default-system' => 'Drupal\Core\Mail\VariableLog'));
 
     drupal_set_time_limit($this->timeLimit);
     $this->setup = TRUE;
@@ -1567,6 +1580,10 @@ class DrupalWebTestCase extends DrupalTestCase {
 
     // Rebuild caches.
     $this->refreshVariables();
+
+    // Reset configuration globals.
+    $GLOBALS['config_directory_name'] = $this->originalConfigDirectory;
+    $GLOBALS['config_signature_key'] = $this->originalConfigSignatureKey;
 
     // Reset language.
     $language_interface = $this->originalLanguage;
@@ -2245,8 +2262,10 @@ class DrupalWebTestCase extends DrupalTestCase {
           case 'text':
           case 'tel':
           case 'textarea':
+          case 'url':
           case 'hidden':
           case 'password':
+          case 'email':
             $post[$name] = $edit[$name];
             unset($edit[$name]);
             break;

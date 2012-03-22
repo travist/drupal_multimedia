@@ -17,14 +17,14 @@ function locale_install() {
   // We cannot rely on language negotiation hooks here, because locale module is
   // not enabled yet. Therefore language_negotiation_set() cannot be used.
   $info = locale_language_negotiation_info();
-  $provider = $info[LANGUAGE_NEGOTIATION_URL];
-  $provider_fields = array('callbacks', 'file', 'cache');
+  $method = $info[LANGUAGE_NEGOTIATION_URL];
+  $method_fields = array('callbacks', 'file', 'cache');
   $negotiation = array();
 
   // Store only the needed data.
-  foreach ($provider_fields as $field) {
-    if (isset($provider[$field])) {
-      $negotiation[LANGUAGE_NEGOTIATION_URL][$field] = $provider[$field];
+  foreach ($method_fields as $field) {
+    if (isset($method[$field])) {
+      $negotiation[LANGUAGE_NEGOTIATION_URL][$field] = $method[$field];
     }
   }
 
@@ -99,7 +99,7 @@ function locale_uninstall() {
 
   foreach (language_types_get_all() as $type) {
     variable_del("language_negotiation_$type");
-    variable_del("locale_language_providers_weight_$type");
+    variable_del("locale_language_negotiation_methods_weight_$type");
   }
 
   // Remove all node type language variables. Node module might have been
@@ -176,20 +176,8 @@ function locale_schema() {
         'default' => '',
         'description' => 'Language code. References {language}.langcode.',
       ),
-      'plid' => array(
-        'type' => 'int',
-        'not null' => TRUE, // This should be NULL for no referenced string, not zero.
-        'default' => 0,
-        'description' => 'Parent lid (lid of the previous string in the plural chain) in case of plural strings. References {locales_source}.lid.',
-      ),
-      'plural' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-        'description' => 'Plural index number in case of plural strings.',
-      ),
     ),
-    'primary key' => array('language', 'lid', 'plural'),
+    'primary key' => array('language', 'lid'),
     'foreign keys' => array(
       'locales_source' => array(
         'table' => 'locales_source',
@@ -198,8 +186,6 @@ function locale_schema() {
     ),
     'indexes' => array(
       'lid'      => array('lid'),
-      'plid'     => array('plid'),
-      'plural'   => array('plural'),
     ),
   );
 
@@ -284,6 +270,218 @@ function locale_update_8001() {
         ->execute();
     }
   }
+}
+
+/**
+ * Removes duplicates in {locales_source}.
+ *
+ * Aggressively removes duplicates that has not already been removed by
+ * locale_update_7004() in Drupal 7.x.
+ */
+function locale_update_8002() {
+  // Look up all duplicates.
+  $results = db_query("SELECT source, context FROM {locales_source} GROUP BY source, context HAVING COUNT(*) > 1");
+
+  // For each set of duplicates, select one row that should survive, preferably
+  // one that has been translated, and delete the rest.
+  foreach ($results as $row) {
+    $lid = db_query("SELECT s.lid FROM {locales_source} s LEFT JOIN {locales_target} t ON s.lid = t.lid WHERE s.source = :source AND s.context = :context ORDER BY translation IS NULL", array(
+      ':source' => $row->source,
+      ':context' => $row->context,
+      ))->fetchField();
+    db_delete('locales_source')
+      ->condition('source', $row->source)
+      ->condition('context', $row->context)
+      ->condition('lid', $lid, '<>')
+      ->execute();
+  }
+
+  // Finally remove any rows from {locales_target} that refer to non-existing
+  // lids.
+  $subquery = db_select('locales_source', 't')->fields('t', array('lid'));
+  db_delete('locales_target')->condition('lid', $subquery, 'NOT IN')->execute();
+}
+
+/**
+ * Converts language domains to new format.
+ */
+function locale_update_8003() {
+  $message = '';
+  $domains = variable_get('locale_language_negotiation_url_domains', array());
+  // $used_domains keeps track of the domain names in use.
+  $used_domains = array();
+  foreach ($domains as $langcode => $domain) {
+    // Domain names can not contain protocol and/or ports.
+    if (!empty($domain)) {
+      $host = 'http://' . str_replace(array('http://', 'https://'), '', $domain);
+      if (parse_url($host, PHP_URL_HOST) != $domain) {
+        $domains[$langcode] = parse_url($host, PHP_URL_HOST);
+      }
+      if (array_key_exists($domain, $used_domains)) {
+        if (empty($message)) {
+          $message = 'Some languages are using the same domain name, you should change these domain names at ' . l('URL language detection configuration', 'admin/config/regional/language/configure/url' . '.');
+        }
+      }
+      else {
+        $used_domains[$domain] = $domain;
+      }
+    }
+  }
+  variable_set('locale_language_negotiation_url_domains', $domains);
+
+  if (!empty($message)) {
+    return $message;
+  }
+}
+
+/**
+ * Rename language providers to language negotiation methods.
+ */
+function locale_update_8004() {
+  $types = variable_get('language_types', NULL);
+  if (!empty($types)) {
+    foreach ($types as $type => $configurable) {
+      // Rename the negotiation and language switch callback keys.
+      $negotiation = variable_get('language_negotiation_' . $type, NULL);
+      if (!empty($negotiation)) {
+        foreach ($negotiation as $method_id => &$method) {
+          $method['callbacks']['negotiation'] = $method['callbacks']['language'];
+          unset($method['callbacks']['language']);
+          if (isset($method['callbacks']['switcher'])) {
+            $method['callbacks']['language_switch'] = $method['callbacks']['switcher'];
+            unset($method['callbacks']['switcher']);
+          }
+        }
+        variable_set('language_negotiation_' . $type, $negotiation);
+      }
+
+      // Rename the language negotiation methods weight variable.
+      $weight = variable_get('locale_language_providers_weight_' . $type , NULL);
+      if ($weight !== NULL) {
+        variable_set('locale_language_negotiation_methods_weight_' . $type , $weight);
+        variable_del('locale_language_providers_weight_' . $type);
+      }
+    }
+  }
+}
+
+/**
+ * Update plural interface translations to new format.
+ *
+ * See http://drupal.org/node/532512#comment-5679184 for the details of the
+ * structures handled in this update.
+ */
+function locale_update_8005() {
+  // Collect all LIDs that are sources to plural variants.
+  $results = db_query("SELECT lid, plid FROM {locales_target} WHERE plural <> 0");
+  $plural_lids = array();
+  foreach ($results as $row) {
+    // Need to collect both LID and PLID. The LID for the first (singular)
+    // string can only be retrieved from the first plural's PLID given no
+    // other indication. The last plural variant is never referenced, so we
+    // need to store the LID directly for that. We never know whether we are
+    // on the last plural though, so we always remember LID too.
+    $plural_lids[] = $row->lid;
+    $plural_lids[] = $row->plid;
+  }
+  $plural_lids = array_unique($plural_lids);
+
+  if (!empty($plural_lids)) {
+    // Look up all translations for these source strings. Ordering by language
+    // will group the strings by language, the 'plid' order will get the
+    // strings in singular/plural order and 'plural' will get them in precise
+    // sequential order needed.
+    $results = db_query("SELECT s.lid, s.source, t.translation, t.plid, t.plural, t.language FROM {locales_source} s LEFT JOIN {locales_target} t ON s.lid = t.lid WHERE s.lid IN (:lids) ORDER BY t.language, t.plid, t.plural", array(':lids' => $plural_lids));
+
+    // Collect the strings into an array and combine values as we go.
+    $strings = array();
+    $parents_to_sources = array();
+    $remove_lids = array();
+    foreach ($results as $child) {
+      $strings[$child->language][$child->lid] = array(
+        'source' => array($child->source),
+        'translation' => array($child->translation),
+      );
+
+      if (empty($child->plid)) {
+        // Non-children strings point to themselves as parents. This makes it
+        // easy to look up the utmost parents for any plurals.
+        $parents_to_sources[$child->lid] = $child->lid;
+      }
+      else {
+        // Children strings point to their utmost parents. Because we get data
+        // in PLID order, we can ensure that all previous parents have data now,
+        // so we can just copy the parent's data about their parent, etc.
+        $parents_to_sources[$child->lid] = $parents_to_sources[$child->plid];
+
+        // Append translation to the utmost parent's translation string.
+        $utmost_parent = &$strings[$child->language][$parents_to_sources[$child->plid]];
+        // Drop the Drupal-specific numbering scheme from the end of plural
+        // formulas.
+        $utmost_parent['translation'][] = str_replace('@count[' . $child->plural .']', '@count', $child->translation);
+        if (count($utmost_parent['source']) < 2) {
+          // Append source to the utmost parent's source string only if it is the
+          // plural variant. Further Drupal specific plural variants are not to be
+          // retained for source strings.
+          $utmost_parent['source'][] = $child->source;
+        }
+
+        // All plural variant LIDs are to be removed with their translations.
+        // Only the singular LIDs will be kept.
+        $remove_lids[] = $child->lid;
+      }
+    }
+
+    // Do updates for all source strings and all translations.
+    $updated_sources = array();
+    foreach ($strings as $langcode => $translations) {
+      foreach($translations as $lid => $translation) {
+        if (!in_array($lid, $updated_sources)) {
+          // Only update source string if not yet updated. We merged these within
+          // the translation lookups because plural information was only avilable
+          // with the translation, but we don't need to save it again for every
+          // language.
+          db_update('locales_source')
+            ->fields(array(
+            'source' => implode(LOCALE_PLURAL_DELIMITER, $translation['source']),
+          ))
+            ->condition('lid', $lid)
+            ->execute();
+          $updated_sources[] = $lid;
+        }
+        db_update('locales_target')
+          ->fields(array(
+          'translation' => implode(LOCALE_PLURAL_DELIMITER, $translation['translation']),
+        ))
+          ->condition('lid', $lid)
+          ->condition('language', $langcode)
+          ->execute();
+      }
+    }
+
+    // Remove all plural LIDs from source and target. only keep those which were
+    // originally used for the singular strings (now updated to contain the
+    // serialized version of plurals).
+    $remove_lids = array_unique($remove_lids);
+    db_delete('locales_source')
+      ->condition('lid', $remove_lids, 'IN')
+      ->execute();
+    db_delete('locales_target')
+      ->condition('lid', $remove_lids, 'IN')
+      ->execute();
+  }
+
+  // Drop the primary key because it contains 'plural'.
+  db_drop_primary_key('locales_target');
+
+  // Remove the 'plid' and 'plural' columns and indexes.
+  db_drop_index('locales_target', 'plid');
+  db_drop_field('locales_target', 'plid');
+  db_drop_index('locales_target', 'plural');
+  db_drop_field('locales_target', 'plural');
+
+  // Add back a primary key without 'plural'.
+  db_add_primary_key('locales_target', array('language', 'lid'));
 }
 
 /**

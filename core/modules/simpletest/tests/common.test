@@ -18,7 +18,7 @@ class CommonDrupalAlterTestCase extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('common_test');
+    parent::setUp(array('block', 'common_test'));
   }
 
   function testDrupalAlter() {
@@ -594,7 +594,7 @@ class CommonCascadingStylesheetsTestCase extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('php', 'language', 'common_test');
+    parent::setUp(array('language', 'common_test'));
     // Reset drupal_add_css() before each test.
     drupal_static_reset('drupal_add_css');
   }
@@ -700,17 +700,22 @@ class CommonCascadingStylesheetsTestCase extends DrupalWebTestCase {
    * Tests rendering inline stylesheets through a full page request.
    */
   function testRenderInlineFullPage() {
+    module_enable(array('php'));
+
     $css = 'body { font-size: 254px; }';
     // Inline CSS is minified unless 'preprocess' => FALSE is passed as a
     // drupal_add_css() option.
     $expected = 'body{font-size:254px;}';
+
+    // Create Basic page node type.
+    $this->drupalCreateContentType(array('type' => 'page', 'name' => 'Basic page'));
 
     // Create a node, using the PHP filter that tests drupal_add_css().
     $php_format_id = 'php_code';
     $settings = array(
       'type' => 'page',
       'body' => array(
-        LANGUAGE_NONE => array(
+        LANGUAGE_NOT_SPECIFIED => array(
           array(
             'value' => t('This tests the inline CSS!') . "<?php drupal_add_css('$css', 'inline'); ?>",
             'format' => $php_format_id,
@@ -1191,8 +1196,10 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
     parent::setUp('locale', 'simpletest', 'common_test');
 
     // Disable preprocessing
-    $this->preprocess_js = variable_get('preprocess_js', 0);
-    variable_set('preprocess_js', 0);
+    $config = config('system.performance');
+    $this->preprocess_js = $config->get('preprocess_js');
+    $config->set('preprocess_js', 0);
+    $config->save();
 
     // Reset drupal_add_js() and drupal_add_library() statics before each test.
     drupal_static_reset('drupal_add_js');
@@ -1201,7 +1208,9 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
 
   function tearDown() {
     // Restore configured value for JavaScript preprocessing.
-    variable_set('preprocess_js', $this->preprocess_js);
+    $config = config('system.performance');
+    $config->set('preprocess_js', $this->preprocess_js);
+    $config->save();
     parent::tearDown();
   }
 
@@ -1399,7 +1408,9 @@ class CommonJavaScriptTestCase extends DrupalWebTestCase {
     // Now ensure that with aggregation on, one file is made for the
     // 'every_page' files, and one file is made for the others.
     drupal_static_reset('drupal_add_js');
-    variable_set('preprocess_js', 1);
+    $config = config('system.performance');
+    $config->set('preprocess_js', 1);
+    $config->save();
     drupal_add_js('core/misc/ajax.js');
     drupal_add_js('core/misc/authorize.js', array('every_page' => TRUE));
     drupal_add_js('core/misc/autocomplete.js');
@@ -2249,11 +2260,6 @@ class CommonDrupalParseInfoFileTestCase extends DrupalUnitTestCase {
  * Tests scanning system directories in drupal_system_listing().
  */
 class CommonDrupalSystemListingTestCase extends DrupalWebTestCase {
-  /**
-   * Use the testing profile; this is needed for testDirectoryPrecedence().
-   */
-  protected $profile = 'testing';
-
   public static function getInfo() {
     return array(
       'name' => 'Drupal system listing',
@@ -2394,7 +2400,7 @@ class CommonFormatDateTestCase extends DrupalWebTestCase {
     // Create a test user to carry out the tests.
     $test_user = $this->drupalCreateUser();
     $this->drupalLogin($test_user);
-    $edit = array('language' => self::LANGCODE, 'mail' => $test_user->mail, 'timezone' => 'America/Los_Angeles');
+    $edit = array('preferred_langcode' => self::LANGCODE, 'mail' => $test_user->mail, 'timezone' => 'America/Los_Angeles');
     $this->drupalPost('user/' . $test_user->uid . '/edit', $edit, t('Save'));
 
     // Disable session saving as we are about to modify the global $user.
@@ -2403,7 +2409,7 @@ class CommonFormatDateTestCase extends DrupalWebTestCase {
     $real_user = $user;
     $user = user_load($test_user->uid, TRUE);
     $real_language = $language_interface->langcode;
-    $language_interface->langcode = $user->language;
+    $language_interface->langcode = $user->preferred_langcode;
     // Simulate a Drupal bootstrap with the logged-in user.
     date_default_timezone_set(drupal_get_user_timezone());
 

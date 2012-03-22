@@ -13,7 +13,7 @@ function overlay_help($path, $arg) {
     case 'admin/help#overlay':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The Overlay module makes the administration pages on your site display in a JavaScript overlay of the page you were viewing when you clicked the administrative link, instead of replacing the page in your browser window. Use the close link on the overlay to return to the page you were viewing when you clicked the link. For more information, see the online handbook entry for <a href="@overlay">Overlay module</a>.', array('@overlay' => 'http://drupal.org/handbook/modules/overlay')) . '</p>';
+      $output .= '<p>' . t('The Overlay module makes the administration pages on your site display in a JavaScript overlay of the page you were viewing when you clicked the administrative link, instead of replacing the page in your browser window. Use the close link on the overlay to return to the page you were viewing when you clicked the link. For more information, see the online handbook entry for <a href="@overlay">Overlay module</a>.', array('@overlay' => 'http://drupal.org/documentation/modules/overlay')) . '</p>';
       return $output;
   }
 }
@@ -199,7 +199,7 @@ function overlay_library_info() {
   // Overlay parent.
   $libraries['parent'] = array(
     'title' => 'Overlay: Parent',
-    'website' => 'http://drupal.org/handbook/modules/overlay',
+    'website' => 'http://drupal.org/documentation/modules/overlay',
     'version' => '1.0',
     'js' => array(
       $module_path . '/overlay-parent.js' => array(),
@@ -215,7 +215,7 @@ function overlay_library_info() {
   // Overlay child.
   $libraries['child'] = array(
     'title' => 'Overlay: Child',
-    'website' => 'http://drupal.org/handbook/modules/overlay',
+    'website' => 'http://drupal.org/documentation/modules/overlay',
     'version' => '1.0',
     'js' => array(
       $module_path . '/overlay-child.js' => array(),
@@ -638,6 +638,13 @@ function overlay_overlay_parent_initialize() {
     $type = str_replace('<front>', variable_get('site_frontpage', 'user'), $type);
   }
   drupal_add_js(array('overlay' => array('paths' => $paths)), 'setting');
+  $path_prefixes = array();
+  if (module_exists('locale') && variable_get('locale_language_negotiation_url_part', LANGUAGE_NEGOTIATION_URL_PREFIX) == LANGUAGE_NEGOTIATION_URL_PREFIX) {
+    // Skip the empty string indicating the default language. We always accept
+    // paths without a prefix.
+    $path_prefixes = array_values(array_filter(locale_language_negotiation_url_prefixes()));
+  }
+  drupal_add_js(array('overlay' => array('pathPrefixes' => $path_prefixes)), 'setting');
   // Pass along the Ajax callback for rerendering sections of the parent window.
   drupal_add_js(array('overlay' => array('ajaxCallback' => 'overlay-ajax')), 'setting');
 }

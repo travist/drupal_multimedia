@@ -76,7 +76,7 @@ function system_help($path, $arg) {
     case 'admin/help#system':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The System module is integral to the site, and provides basic but extensible functionality for use by other modules and themes. Some integral elements of Drupal are contained in and managed by the System module, including caching, enabling and disabling modules and themes, preparing and displaying the administrative page, and configuring fundamental site settings. A number of key system maintenance operations are also part of the System module. For more information, see the online handbook entry for <a href="@system">System module</a>.', array('@system' => 'http://drupal.org/handbook/modules/system')) . '</p>';
+      $output .= '<p>' . t('The System module is integral to the site, and provides basic but extensible functionality for use by other modules and themes. Some integral elements of Drupal are contained in and managed by the System module, including caching, enabling and disabling modules and themes, preparing and displaying the administrative page, and configuring fundamental site settings. A number of key system maintenance operations are also part of the System module. For more information, see the online handbook entry for <a href="@system">System module</a>.', array('@system' => 'http://drupal.org/documentation/modules/system')) . '</p>';
       $output .= '<h3>' . t('Uses') . '</h3>';
       $output .= '<dl>';
       $output .= '<dt>' . t('Managing modules') . '</dt>';
@@ -374,6 +374,26 @@ function system_element_info() {
     '#theme' => 'tel',
     '#theme_wrappers' => array('form_element'),
   );
+  $types['email'] = array(
+    '#input' => TRUE,
+    '#size' => 60,
+    '#maxlength' => EMAIL_MAX_LENGTH,
+    '#autocomplete_path' => FALSE,
+    '#process' => array('ajax_process_form'),
+    '#element_validate' => array('form_validate_email'),
+    '#theme' => 'email',
+    '#theme_wrappers' => array('form_element'),
+  );
+  $types['url'] = array(
+    '#input' => TRUE,
+    '#size' => 60,
+    '#maxlength' => 255,
+    '#autocomplete_path' => FALSE,
+    '#process' => array('ajax_process_form'),
+    '#element_validate' => array('form_validate_url'),
+    '#theme' => 'url',
+    '#theme_wrappers' => array('form_element'),
+  );
   $types['machine_name'] = array(
     '#input' => TRUE,
     '#default_value' => NULL,
@@ -403,7 +423,7 @@ function system_element_info() {
     '#input' => TRUE,
     '#cols' => 60,
     '#rows' => 5,
-    '#resizable' => TRUE,
+    '#resizable' => 'vertical',
     '#process' => array('ajax_process_form'),
     '#theme' => 'textarea',
     '#theme_wrappers' => array('form_element'),
@@ -1162,15 +1182,6 @@ function system_library_info() {
     ),
   );
 
-  // Drupal's resizable textarea.
-  $libraries['drupal.textarea'] = array(
-    'title' => 'Drupal resizable textarea',
-    'version' => VERSION,
-    'js' => array(
-      'core/misc/textarea.js' => array('group' => JS_DEFAULT),
-    ),
-  );
-
   // Drupal's autocomplete widget.
   $libraries['drupal.autocomplete'] = array(
     'title' => 'Drupal autocomplete',
@@ -1668,13 +1679,13 @@ function system_stream_wrappers() {
   $wrappers = array(
     'public' => array(
       'name' => t('Public files'),
-      'class' => 'DrupalPublicStreamWrapper',
+      'class' => 'Drupal\Core\StreamWrapper\PublicStream',
       'description' => t('Public local files served by the webserver.'),
       'type' => STREAM_WRAPPERS_LOCAL_NORMAL,
     ),
     'temporary' => array(
       'name' => t('Temporary files'),
-      'class' => 'DrupalTemporaryStreamWrapper',
+      'class' => 'Drupal\Core\StreamWrapper\TemporaryStream',
       'description' => t('Temporary local files for upload and previews.'),
       'type' => STREAM_WRAPPERS_LOCAL_HIDDEN,
     ),
@@ -1684,7 +1695,7 @@ function system_stream_wrappers() {
   if (variable_get('file_private_path', FALSE)) {
     $wrappers['private'] = array(
       'name' => t('Private files'),
-      'class' => 'DrupalPrivateStreamWrapper',
+      'class' => 'Drupal\Core\StreamWrapper\PrivateStream',
       'description' => t('Private local files served by Drupal.'),
       'type' => STREAM_WRAPPERS_LOCAL_NORMAL,
     );
@@ -1851,12 +1862,12 @@ function system_authorized_batch_process() {
 function system_updater_info() {
   return array(
     'module' => array(
-      'class' => 'ModuleUpdater',
+      'class' => 'Drupal\Core\Updater\Module',
       'name' => t('Update modules'),
       'weight' => 0,
     ),
     'theme' => array(
-      'class' => 'ThemeUpdater',
+      'class' => 'Drupal\Core\Updater\Theme',
       'name' => t('Update themes'),
       'weight' => 0,
     ),
@@ -2381,7 +2392,6 @@ function _system_rebuild_module_data() {
   $modules[$profile] = new stdClass();
   $modules[$profile]->name = $profile;
   $modules[$profile]->uri = 'profiles/' . $profile . '/' . $profile . '.profile';
-  $modules[$profile]->filename = $profile . '.profile';
 
   // Install profile hooks are always executed last.
   $modules[$profile]->weight = 1000;
@@ -2771,11 +2781,26 @@ function system_settings_form_submit($form, &$form_state) {
   // Exclude unnecessary elements.
   form_state_values_clean($form_state);
 
+  $config_objects = array();
   foreach ($form_state['values'] as $key => $value) {
+    if (isset($form_state['config'][$key])) {
+      $config_name = $form_state['config'][$key]['name'];
+      $config_key = $form_state['config'][$key]['path'];
+      if (empty($config_objects[$config_name])) {
+        $config_objects[$config_name] = config($config_name);
+      }
+      if (!empty($config_objects[$config_name])) {
+        $config_objects[$config_name]->set($config_key, $value);
+        continue;
+      }
+    }
     if (is_array($value) && isset($form_state['values']['array_filter'])) {
       $value = array_keys(array_filter($value));
     }
     variable_set($key, $value);
+  }
+  foreach ($config_objects as $config) {
+    $config->save();
   }
 
   drupal_set_message(t('The configuration options have been saved.'));
@@ -3923,12 +3948,12 @@ function system_date_format_delete($dfid) {
  */
 function system_archiver_info() {
   $archivers['tar'] = array(
-    'class' => 'ArchiverTar',
+    'class' => 'Drupal\Component\Archiver\Tar',
     'extensions' => array('tar', 'tgz', 'tar.gz', 'tar.bz2'),
   );
   if (function_exists('zip_open')) {
     $archivers['zip'] = array(
-      'class' => 'ArchiverZip',
+      'class' => 'Drupal\Component\Archiver\Zip',
       'extensions' => array('zip'),
     );
   }

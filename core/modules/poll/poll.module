@@ -14,7 +14,7 @@ function poll_help($path, $arg) {
     case 'admin/help#poll':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The Poll module can be used to create simple surveys or questionnaires that display cumulative results. A poll is a good way to receive feedback from site users and community members. For more information, see the online handbook entry for the <a href="@poll">Poll module</a>.', array('@poll' => 'http://drupal.org/handbook/modules/poll/')) . '</p>';
+      $output .= '<p>' . t('The Poll module can be used to create simple surveys or questionnaires that display cumulative results. A poll is a good way to receive feedback from site users and community members. For more information, see the online handbook entry for the <a href="@poll">Poll module</a>.', array('@poll' => 'http://drupal.org/documentation/modules/poll/')) . '</p>';
       $output .= '<h3>' . t('Uses') . '</h3>';
       $output .= '<dl>';
       $output .= '<dt>' . t('Creating a poll') . '</dt>';
@@ -59,7 +59,7 @@ function poll_permission() {
       'title' => t('Cancel and change own votes'),
     ),
     'inspect all votes' => array(
-      'title' => t('View voting results'),
+      'title' => t('View details for all votes'),
     ),
   );
 
@@ -329,6 +329,9 @@ function poll_form($node, &$form_state) {
     '#default_value' => isset($node->runtime) ? $node->runtime : 0,
     '#options' => $duration,
     '#description' => t('After this period, the poll will be closed automatically.'),
+  );
+  $form['#attached']['css'] = array(
+    drupal_get_path('module', 'poll') . '/poll.admin.css',
   );
 
   return $form;
@@ -823,7 +826,8 @@ function poll_view_results($node, $view_mode, $block = FALSE) {
 
     $poll_results[] = array(
       '#theme' => 'meter',
-      '#prefix' => '<div class="choice-title">' . check_plain($choice['chtext']) . '</div>',
+      '#prefix' => '<dt class="choice-title">' . check_plain($choice['chtext']) . "</dt>\n" . '<dd class="choice-result">',
+      '#suffix' => "</dd>\n",
       '#display_value' =>  t('!percentage%', array('!percentage' => $percentage)) . $display_votes,
       '#min' => 0,
       '#max' => $total_votes,

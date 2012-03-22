@@ -36,7 +36,7 @@ function taxonomy_help($path, $arg) {
     case 'admin/help#taxonomy':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The Taxonomy module allows you to classify the content of your website. To classify content, you define <em>vocabularies</em> that contain related <em>terms</em>, and then assign the vocabularies to content types. For more information, see the online handbook entry for the <a href="@taxonomy">Taxonomy module</a>.', array('@taxonomy' => 'http://drupal.org/handbook/modules/taxonomy/')) . '</p>';
+      $output .= '<p>' . t('The Taxonomy module allows you to classify the content of your website. To classify content, you define <em>vocabularies</em> that contain related <em>terms</em>, and then assign the vocabularies to content types. For more information, see the online handbook entry for the <a href="@taxonomy">Taxonomy module</a>.', array('@taxonomy' => 'http://drupal.org/documentation/modules/taxonomy')) . '</p>';
       $output .= '<h3>' . t('Uses') . '</h3>';
       $output .= '<dl>';
       $output .= '<dt>' . t('Creating vocabularies') . '</dt>';
@@ -434,6 +434,7 @@ function taxonomy_admin_vocabulary_title_callback($vocabulary) {
  *   - vid: The ID of the vocabulary.
  *   - name: The human-readable name of the vocabulary.
  *   - machine_name: The machine name of the vocabulary.
+ *   - langcode: The language code of the vocabulary.
  *   - description: (optional) The vocabulary's description.
  *   - hierarchy: The hierarchy level of the vocabulary.
  *   - module: (optional) The module altering the vocabulary.
@@ -638,6 +639,7 @@ function taxonomy_check_vocabulary_hierarchy($vocabulary, $changed_term) {
  *   The taxonomy term object with the following properties:
  *   - vid: The ID of the vocabulary the term is assigned to.
  *   - name: The name of the term.
+ *   - langcode: The language code of the term.
  *   - tid: (optional) The unique ID for the term being saved. If $term->tid is
  *     empty or omitted, a new term will be inserted.
  *   - description: (optional) The term's description.
@@ -1829,6 +1831,7 @@ function taxonomy_field_presave($entity_type, $entity, $field, $instance, $langc
     if ($item['tid'] == 'autocreate') {
       $term = (object) $item;
       unset($term->tid);
+      $term->langcode = $langcode;
       taxonomy_term_save($term);
       $items[$delta]['tid'] = $term->tid;
     }

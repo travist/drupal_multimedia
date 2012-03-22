@@ -6,6 +6,24 @@
  */
 
 class PathTestCase extends DrupalWebTestCase {
+  function setUp() {
+    $modules = func_get_args();
+    if (isset($modules[0]) && is_array($modules[0])) {
+      $modules = $modules[0];
+    }
+    $modules[] = 'node';
+    $modules[] = 'path';
+    parent::setUp($modules);
+
+    // Create Basic page and Article node types.
+    if ($this->profile != 'standard') {
+      $this->drupalCreateContentType(array('type' => 'page', 'name' => 'Basic page'));
+      $this->drupalCreateContentType(array('type' => 'article', 'name' => 'Article'));
+    }
+  }
+}
+
+class PathAliasTestCase extends PathTestCase {
   public static function getInfo() {
     return array(
       'name' => 'Path alias functionality',
@@ -162,12 +180,29 @@ class PathTestCase extends DrupalWebTestCase {
   function getPID($alias) {
     return db_query("SELECT pid FROM {url_alias} WHERE alias = :alias", array(':alias' => $alias))->fetchField();
   }
+
+  /**
+   * Tests that duplicate aliases fail validation.
+   */
+  function testDuplicateNodeAlias() {
+    // Create one node with a random alias.
+    $node_one = $this->drupalCreateNode();
+    $edit = array();
+    $edit['path[alias]'] = $this->randomName();
+    $this->drupalPost('node/' . $node_one->nid . '/edit', $edit, t('Save'));
+
+    // Now create another node and try to set the same alias.
+    $node_two = $this->drupalCreateNode();
+    $this->drupalPost('node/' . $node_two->nid . '/edit', $edit, t('Save'));
+    $this->assertText(t('The alias is already in use.'));
+    $this->assertFieldByXPath("//input[@name='path[alias]' and contains(@class, 'error')]", $edit['path[alias]'], 'Textfield exists and has the error class.');
+  }
 }
 
 /**
  * Test URL aliases for taxonomy terms.
  */
-class PathTaxonomyTermTestCase extends DrupalWebTestCase {
+class PathTaxonomyTermTestCase extends PathTestCase {
   public static function getInfo() {
     return array(
       'name' => 'Taxonomy term URL aliases',
@@ -177,7 +212,14 @@ class PathTaxonomyTermTestCase extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('path', 'taxonomy');
+    parent::setUp(array('taxonomy'));
+
+    // Create a Tags vocabulary for the Article node type.
+    $vocabulary = (object) array(
+      'name' => t('Tags'),
+      'machine_name' => 'tags',
+    );
+    taxonomy_vocabulary_save($vocabulary);
 
     // Create and login user.
     $web_user = $this->drupalCreateUser(array('administer url aliases', 'administer taxonomy', 'access administration pages'));
@@ -228,7 +270,7 @@ class PathTaxonomyTermTestCase extends DrupalWebTestCase {
   }
 }
 
-class PathLanguageTestCase extends DrupalWebTestCase {
+class PathLanguageTestCase extends PathTestCase {
   public static function getInfo() {
     return array(
       'name' => 'Path aliases with translated nodes',
@@ -279,7 +321,7 @@ class PathLanguageTestCase extends DrupalWebTestCase {
     $this->drupalGet('node/' . $english_node->nid . '/translate');
     $this->clickLink(t('add translation'));
     $edit = array();
-    $langcode = LANGUAGE_NONE;
+    $langcode = LANGUAGE_NOT_SPECIFIED;
     $edit["title"] = $this->randomName();
     $edit["body[$langcode][0][value]"] = $this->randomName();
     $french_alias = $this->randomName();
@@ -317,7 +359,7 @@ class PathLanguageTestCase extends DrupalWebTestCase {
     $this->drupalPost('admin/config/regional/language/detection', $edit, t('Save settings'));
 
     // Change user language preference.
-    $edit = array('language' => 'fr');
+    $edit = array('preferred_langcode' => 'fr');
     $this->drupalPost("user/{$this->web_user->uid}/edit", $edit, t('Save'));
 
     // Check that the English alias works. In this situation French is the
@@ -371,7 +413,7 @@ class PathLanguageTestCase extends DrupalWebTestCase {
 /**
  * Tests the user interface for creating path aliases, with languages.
  */
-class PathLanguageUITestCase extends DrupalWebTestCase {
+class PathLanguageUITestCase extends PathTestCase {
   public static function getInfo() {
     return array(
       'name' => 'Path aliases with languages',
@@ -447,7 +489,7 @@ class PathLanguageUITestCase extends DrupalWebTestCase {
 /**
  * Tests that paths are not prefixed on a monolingual site.
  */
-class PathMonolingualTestCase extends DrupalWebTestCase {
+class PathMonolingualTestCase extends PathTestCase {
   public static function getInfo() {
     return array(
       'name' => 'Paths on non-English monolingual sites',
